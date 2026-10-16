@@ -2,9 +2,27 @@
 (() => {
   "use strict";
 
-  const $ = id => document.getElementById(id);
-  const cfg = window.FUTEBOL_CONFIG || {};
-  const token = new URL(location.href).searchParams.get("socio");
+
+const $ = id => document.getElementById(id);
+
+const configOriginal = window.FUTEBOL_CONFIG || {};
+
+const cfg = {
+  supabaseUrl: (
+    configOriginal.SUPABASE_URL ||
+    configOriginal.supabaseUrl ||
+    ""
+  ).replace(/\/rest\/v1\/?$/, ""),
+
+  supabasePublishableKey:
+    configOriginal.SUPABASE_ANON_KEY ||
+    configOriginal.SUPABASE_PUBLISHABLE_KEY ||
+    configOriginal.supabasePublishableKey ||
+    ""
+};
+
+const token = new URL(location.href).searchParams.get("socio");
+
 
   let supabase = null;
   let installPrompt = null;
