@@ -1,0 +1,180 @@
+<!DOCTYPE html><html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#176b45">
+  <meta name="description" content="Aplicativo do grupo Futebol de Sexta">
+  <title>Futebol de Sexta</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h2 style="color: red; padding: 20px;">
+  TESTE FUTEBOL DE SEXTA
+</h2>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">⚽</div>
+      <div>
+        <h1>Futebol de Sexta</h1>
+        <p>Nosso futebol, nossa turma</p>
+      </div>
+    </div>
+    <button id="installBtn" class="btn btn-light hidden" type="button">
+      Instalar aplicativo
+    </button>
+  </header>  <main class="container">
+    <section class="card">
+      <div class="status-line">
+        <span class="eyebrow">ACESSO AO GRUPO</span>
+        <span id="connectionStatus" class="status">Verificando...</span>
+      </div>
+      <h2 id="identityText">Bem-vindo ao Futebol de Sexta!</h2>
+      <p id="identityHint" class="muted">
+        Abra seu link individual para acessar sua participação.
+      </p>  <div id="activationBox" class="activation-box hidden">
+    <label for="activationCode">Código de ativação</label>
+    <input id="activationCode" type="text"
+      autocomplete="one-time-code"
+      placeholder="Digite o código recebido">
+    <button id="activateBtn" class="btn btn-primary" type="button">
+      Ativar meu acesso
+    </button>
+  </div>
+</section>
+
+<section class="card game-card">
+  <div class="status-line">
+    <span class="eyebrow">PRÓXIMO JOGO</span>
+    <span id="gameStatus" class="status">Aguardando</span>
+  </div>
+  <h2 id="gameDate">Sexta-feira, 19h30</h2>
+  <p id="gameSubtitle" class="muted">
+    Consulte e confirme sua presença.
+  </p>
+
+  <div class="capacity">
+    <div class="capacity-heading">
+      <strong>Vagas ocupadas</strong>
+      <strong id="countLabel">0 / 18</strong>
+    </div>
+    <div class="progress-track">
+      <div id="progressBar" class="progress-bar"></div>
+    </div>
+  </div>
+
+  <div id="closedNotice" class="notice hidden">
+    As confirmações estão fechadas ou todas as vagas foram preenchidas.
+  </div>
+
+  <div id="confirmationArea" class="action-area hidden">
+    <h3>Você vai jogar?</h3>
+    <div class="button-row">
+      <button id="yesBtn" class="btn btn-primary" type="button">
+        Vou jogar
+      </button>
+      <button id="noBtn" class="btn btn-secondary" type="button">
+        Não vou
+      </button>
+    </div>
+    <p id="confirmationMessage" class="message" aria-live="polite"></p>
+  </div>
+
+  <div id="guestArea" class="guest-area hidden">
+    <h3>Levar um convidado</h3>
+    <p class="muted">Cadastre o convidado se houver vaga disponível.</p>
+    <label for="guestName">Nome do convidado</label>
+    <input id="guestName" type="text" maxlength="100"
+      placeholder="Nome completo">
+    <button id="guestBtn" class="btn btn-primary" type="button">
+      Cadastrar convidado
+    </button>
+    <p id="guestMessage" class="message" aria-live="polite"></p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="status-line">
+    <h2>Lista de confirmados</h2>
+    <span id="listCount" class="status">0 confirmados</span>
+  </div>
+  <p class="muted">Confira quem confirmou presença no próximo jogo.</p>
+  <div id="participantsList">
+    <p class="muted">A lista será carregada quando o banco estiver conectado.</p>
+  </div>
+</section>
+
+<section id="adminLoginCard" class="card">
+  <span class="eyebrow">ÁREA RESTRITA</span>
+  <h2>Administrador</h2>
+  <p class="muted">
+    A área administrativa será acessada com seu usuário do Supabase.
+  </p>
+  <button id="adminLoginBtn" class="btn btn-secondary" type="button">
+    Acessar administração
+  </button>
+  <p id="adminMessage" class="message" aria-live="polite"></p>
+</section>
+
+<section id="adminPanel" class="card hidden">
+  <div class="status-line">
+    <h2>Painel administrativo</h2>
+    <button id="adminLogoutBtn" class="btn btn-secondary" type="button">
+      Sair
+    </button>
+  </div>
+  <p class="muted">Área de gerenciamento do Futebol de Sexta.</p>
+
+  <div id="adminLoginForm" class="admin-form hidden">
+    <label for="adminEmail">E-mail do administrador</label>
+    <input id="adminEmail" type="email" autocomplete="username"
+      placeholder="Seu e-mail">
+
+    <label for="adminPassword">Senha</label>
+    <input id="adminPassword" type="password"
+      autocomplete="current-password" placeholder="Sua senha">
+
+    <button id="adminSubmitBtn" class="btn btn-primary" type="button">
+      Entrar
+    </button>
+  </div>
+
+  <div id="adminContent" class="hidden">
+    <h3>Cadastrar sócio</h3>
+    <label for="newMemberName">Nome do sócio</label>
+    <input id="newMemberName" type="text" maxlength="100"
+      placeholder="Nome completo">
+    <button id="createMemberBtn" class="btn btn-primary" type="button">
+      Criar sócio
+    </button>
+    <div id="newMemberResult" class="result-box hidden"></div>
+
+    <hr>
+
+    <h3>Criar jogo</h3>
+    <label for="gameInputDate">Data do jogo</label>
+    <input id="gameInputDate" type="date">
+    <label for="gameInputTime">Horário</label>
+    <input id="gameInputTime" type="time" value="19:30">
+    <button id="createGameBtn" class="btn btn-primary" type="button">
+      Criar jogo
+    </button>
+
+    <hr>
+
+    <h3>Gerenciar confirmações</h3>
+    <p class="muted">
+      O controle de abertura, fechamento e presença real será conectado
+      às funções administrativas do banco na próxima etapa.
+    </p>
+    <p id="adminActionMessage" class="message" aria-live="polite"></p>
+  </div>
+</section>
+
+<footer>
+  <p>Futebol de Sexta · Feito para nossa turma</p>
+</footer>
+
+  </main>  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  <script src="config.js"></script>  <script src="app.js"></script></body>
+</html>

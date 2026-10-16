@@ -1,0 +1,13 @@
+{
+  "name": "Futebol de Sexta",
+  "short_name": "Futebol de Sexta",
+  "description": "Confirmação de presença e convidados do Futebol de Sexta",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f2f6f2",
+  "theme_color": "#166534",
+  "icons": [
+    {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#166534">
+  <meta name="description" content="Confirmação de presença do Futebol de Sexta">
+  <title>Futebol de Sexta</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand-icon">⚽</div>
+    <div><h1>Futebol de Sexta</h1><p>Sextas-feiras · 19h30</p></div>
+    <button id="installBtn" class="install hidden" type="button">Instalar</button>
+  </header>
+
+  <main>
+    <section class="card" id="identityCard">
+      <div class="section-head"><h2>Seu acesso</h2><span id="connectionStatus" class="pill">Iniciando…</span></div>
+      <p id="identityText">Verificando seu link individual…</p>
+      <div id="activationBox" class="hidden">
+        <label for="activationCode">Código de ativação fornecido pelo administrador</label>
+        <input id="activationCode" autocomplete="one-time-code" placeholder="Digite o código">
+        <button id="activateBtn" class="primary full">Ativar este celular</button>
+      </div>
+      <p id="identityHint" class="muted small"></p>
+    </section>
+
+    <section class="card">
+      <div class="section-head"><h2>Próximo jogo</h2><span id="gameStatus" class="pill">Carregando</span></div>
+      <div class="game-date"><span class="ball">⚽</span><div><strong id="gameDate">Sexta-feira, 19h30</strong><p id="gameSubtitle">Consulte sua participação</p></div></div>
+      <div class="progress-label"><span>Participantes confirmados</span><strong id="countLabel">—</strong></div>
+      <div class="progress"><div id="progressBar"></div></div>
+      <div class="counts"><span>14 jogadores de linha</span><span>2 goleiros</span><span>2 reservas</span></div>
+      <div id="confirmationArea" class="hidden">
+        <p class="muted">Confirme sua própria participação neste jogo.</p>
+        <div class="button-row">
+          <button id="yesBtn" class="primary">✓ Vou jogar</button>
+          <button id="noBtn" class="secondary">Não vou</button>
+        </div>
+        <p id="confirmationMessage" class="notice" aria-live="polite"></p>
+      </div>
+      <div id="closedNotice" class="notice hidden">As vagas deste jogo estão fechadas. Fale com um administrador se precisar corrigir sua situação.</div>
+    </section>
+
+    <section class="card" id="guestCard">
+      <div class="section-head"><h2>Meu convidado</h2><span class="pill">1 por sócio</span></div>
+      <p class="muted">O convidado fica vinculado ao seu cadastro e a este jogo. Só será possível convidar quando houver vagas liberadas.</p>
+      <div id="guestArea" class="hidden">
+        <label for="guestName">Nome completo do convidado</label>
+        <input id="guestName" maxlength="100" placeholder="Nome do convidado">
+        <button id="guestBtn" class="primary full">Cadastrar convidado</button>
+      </div>
+      <p id="guestMessage" class="notice" aria-live="polite"></p>
+    </section>
+
+    <section class="card">
+      <div class="section-head"><h2>Participantes</h2><span id="listCount" class="pill">—</span></div>
+      <div id="participantsList" class="participant-list"><p class="muted">Carregando participantes…</p></div>
+    </section>
+
+    <section class="card">
+      <h2>Regras do grupo</h2>
+      <ol class="rules">
+        <li>Os jogos acontecem às sextas-feiras, às 19h30.</li>
+        <li>A formação prevista é de 14 jogadores de linha e 2 goleiros, com até 2 reservas adicionais.</li>
+        <li>Cada sócio confirma apenas a própria participação pelo seu acesso individual.</li>
+        <li>Cada sócio pode cadastrar no máximo um convidado por jogo.</li>
+        <li>Convites dependem das vagas disponíveis e ficam vinculados ao sócio que convidou.</li>
+        <li>Quando a capacidade for atingida, confirmações e convites serão bloqueados.</li>
+        <li>Somente administradores podem alterar cadastros, regras, presença efetiva e composição dos times.</li>
+      </ol>
+      <p class="muted small">As regras podem ser ajustadas pelo administrador quando a área administrativa estiver configurada.</p>
+    </section>
+
+    <section class="card admin-card">
+      <div class="section-head"><h2>Área administrativa</h2><span class="pill">Restrita</span></div>
+      <p class="muted">A administração é feita pelo painel seguro do Supabase nesta versão inicial. Não compartilhe chaves secretas. A área administrativa dentro do app será adicionada após configurar o acesso de administrador.</p>
+      <a class="text-link" href="https://supabase.com/dashboard" target="_blank" rel="noopener">Abrir painel do Supabase ↗</a>
+    </section>
+    <footer>Futebol de Sexta · Feito para o grupo</footer>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
