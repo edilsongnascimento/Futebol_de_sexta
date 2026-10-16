@@ -1,107 +1,338 @@
+
 (() => {
   "use strict";
+
   const $ = id => document.getElementById(id);
   const cfg = window.FUTEBOL_CONFIG || {};
-  const pageUrl = new URL(location.href);
-  const token = pageUrl.searchParams.get("socio");
-  let supabase = null, member = null, installPrompt = null;
-  const standalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-  const setStatus = (id, msg, error=false) => { const el=$(id); if(!el)return; el.textContent=msg||""; el.classList.toggle("error",!!error); };
-  const showSetup = msg => { $("setupNotice").textContent=msg; $("setupNotice").classList.remove("hidden"); };
-  const rpc = async (name, args={}) => {
-    if (!supabase) throw new Error("Supabase não configurado.");
-    const {data,error}=await supabase.rpc(name,args);
-    if(error) throw error;
-    return data;
+  const token = new URL(location.href).searchParams.get("socio");
+
+  let supabase = null;
+  let installPrompt = null;
+  let busy = false;
+
+  const status = (id, message, error = false) => {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = message || "";
+    el.classList.toggle("error", error);
   };
-  function renderList(id, people, emptyText, confirmed=false) {
-    const list=$(id); list.replaceChildren();
-    if(!Array.isArray(people)||people.length===0){const li=document.createElement("li");li.className="muted";li.textContent=emptyText;list.append(li);return;}
-    people.forEach(person=>{
-      const li=document.createElement("li");
-      const name=document.createElement("span");name.textContent=person.nome||"Sócio";li.append(name);
-      if(person.convidado){const badge=document.createElement("span");badge.className="guest-label";badge.textContent="Convidado de "+person.convidado;li.append(badge);}
-      else if(confirmed){const badge=document.createElement("span");badge.className="guest-label";badge.textContent=person.goleiro?"Goleiro":"Confirmado";li.append(badge);}
+
+  function notice(message) {
+    const el = $("setupNotice");
+    if (!el) return;
+    el.replaceChildren();
+    el.classList.remove("hidden");
+    const p = document.createElement("p");
+    p.textContent = message;
+    el.append(p);
+  }
+
+  async function rpc(name, args = {}) {
+    const { data, error } = await supabase.rpc(name, args);
+    if (error) throw error;
+    return data;
+  }
+
+  function standalone() {
+    return window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true;
+  }
+
+  function showInstallOption() {
+    const area = $("installArea");
+    if (area) {
+      area.classList.toggle("hidden", !token || standalone());
+    }
+  }
+
+  async function installApp() {
+    if (standalone()) return;
+
+    if (installPrompt) {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+
+      status(
+        "installHelp",
+        choice?.outcome === "accepted"
+          ? "Instalação solicitada. Abra pelo ícone quando terminar."
+          : "Você pode instalar depois pelo menu do navegador."
+      );
+
+      installPrompt = null;
+      showInstallOption();
+      return;
+    }
+
+    status(
+      "installHelp",
+      "No Android, abra o menu ⋮ do Chrome e escolha “Instalar app” ou “Adicionar à tela inicial”."
+    );
+  }
+
+  function renderList(id, people, emptyMessage) {
+    const list = $(id);
+    if (!list) return;
+
+    list.replaceChildren();
+
+    if (!Array.isArray(people) || people.length === 0) {
+      const li = document.createElement("li");
+      li.className = "muted";
+      li.textContent = emptyMessage;
+      list.append(li);
+      return;
+    }
+
+    people.forEach(person => {
+      const li = document.createElement("li");
+      const name = document.createElement("span");
+      name.textContent = person.nome || "Participante";
+      li.append(name);
+
+      if (person.tipo === "convidado" && person.convidado_por) {
+        const badge = document.createElement("span");
+        badge.className = "guest-label";
+        badge.textContent = "Convidado de " + person.convidado_por;
+        li.append(badge);
+      }
+
       list.append(li);
     });
   }
-  function showInstallOption() {
-    // Só existe acesso individual com token. O modo instalado não exibe o botão.
-    const area=$("installArea");
-    if(token && !standalone()) area.classList.remove("hidden"); else area.classList.add("hidden");
+
+  function formatDate(value) {
+    if (!value) return "";
+    const parts = value.split("-");
+    if (parts.length !== 3) return value;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
-  async function installApp() {
-    if(standalone()){showInstallOption();return;}
-    if(installPrompt){
-      installPrompt.prompt();
-      const choice=await installPrompt.userChoice;
-      if(choice?.outcome==="accepted") setStatus("installHelp","Instalação solicitada. Quando terminar, abra pelo ícone Futebol de Sexta.");
-      else setStatus("installHelp","Você pode instalar depois pelo menu do navegador.");
-      installPrompt=null;
+
+  async function load() {
+    if (!cfg.supabaseUrl || !cfg.supabasePublishableKey) {
+      $("loading").classList.add("hidden");
+      notice("Confira a URL e a chave publishable no arquivo config.js.");
       return;
     }
-    setStatus("installHelp","No Android: toque no menu ⋮ do Chrome e escolha “Instalar app” ou “Adicionar à tela inicial”. Depois, abra pelo ícone criado.");
-  }
-  async function load() {
-    if (!cfg.supabaseUrl || !cfg.supabasePublishableKey || cfg.supabasePublishableKey.includes("COLE_AQUI")) {
-      $("loading").classList.add("hidden"); showSetup("Falta configurar a chave publishable do Supabase no arquivo config.js."); return;
-    }
+
     if (!window.supabase?.createClient) {
-      $("loading").classList.add("hidden"); showSetup("Não foi possível carregar a biblioteca do Supabase. Verifique sua conexão."); return;
+      $("loading").classList.add("hidden");
+      notice("Não foi possível carregar o Supabase. Verifique a conexão.");
+      return;
     }
-    supabase=window.supabase.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey);
-    if(!token){$("loading").classList.add("hidden");showSetup("Para consultar e confirmar sua presença, abra o link individual enviado pela administração.");return;}
+
+    if (!token) {
+      $("loading").classList.add("hidden");
+      notice("Abra o link individual enviado pela administração.");
+      return;
+    }
+
     try {
-      const data=await rpc("socio_resumo",{p_token:token});
-      if(!data||data.ok===false)throw new Error(data?.mensagem||"Link individual inválido ou desativado.");
-      member=data;
-      $("memberName").textContent=data.nome||"Sócio";
-      $("memberMessage").textContent=data.mensagem||"Confirme sua presença para o próximo jogo.";
-      $("rsvpStatus").textContent=data.confirmacao?`Sua resposta: ${data.confirmacao==="vou"?"Vou jogar":"Não vou"}`:"Você ainda não respondeu.";
-      $("guestName").value=data.convidado_nome||""; $("guestPhone").value=data.convidado_telefone||"";
-      $("playersCount").textContent=data.jogadores??0; $("keepersCount").textContent=data.goleiros??0; $("reservesCount").textContent=data.reservas??0;
-      $("gameTitle").textContent=data.jogo?.data?"Jogo de "+data.jogo.data:"Próximo jogo";
-      $("gamePill").textContent=data.jogo?.hora||"Sem jogo aberto";
-      $("gameInfo").textContent=data.jogo?(data.jogo.local?"Local: "+data.jogo.local:"O local ainda não foi informado."):(data.mensagem||"Ainda não há jogo aberto.");
-      renderList("confirmedList",data.confirmados,"Ainda não há sócios confirmados.",true);
-      renderList("pendingList",data.pendentes,"Todos os sócios já responderam.");
-      $("confirmedCount").textContent=(data.confirmados||[]).length; $("pendingCount").textContent=(data.pendentes||[]).length;
-      const hasGame=!!data.jogo;
-      $("yesBtn").disabled=!hasGame; $("noBtn").disabled=!hasGame;
-      $("guestBtn").disabled=!hasGame||data.confirmacao!=="vou";
-      $("removeGuestBtn").disabled=!hasGame;
-      $("loading").classList.add("hidden"); $("app").classList.remove("hidden");
-      $("yesBtn").onclick=()=>answer("vou"); $("noBtn").onclick=()=>answer("nao");
-      $("guestBtn").onclick=saveGuest; $("removeGuestBtn").onclick=removeGuest; $("installBtn").onclick=installApp;
+      supabase = window.supabase.createClient(
+        cfg.supabaseUrl,
+        cfg.supabasePublishableKey
+      );
+
+      await refresh(true);
+      $("loading").classList.add("hidden");
+      $("app").classList.remove("hidden");
+
+      $("yesBtn").onclick = () => answer(true);
+      $("noBtn").onclick = () => answer(false);
+      $("guestBtn").onclick = saveGuest;
+      $("installBtn").onclick = installApp;
+
+      // O banco atual não possui uma função para remover convidados.
+      $("removeGuestBtn").disabled = true;
+      $("removeGuestBtn").title =
+        "A remoção de convidados ainda não está disponível.";
+
       showInstallOption();
-    } catch(e){$("loading").classList.add("hidden");showSetup(e.message||"Erro ao carregar os dados.");}
+    } catch (error) {
+      $("loading").classList.add("hidden");
+      notice(error.message || "Não foi possível carregar os dados.");
+    }
   }
-  async function answer(value){
-    try{$("yesBtn").disabled=$("noBtn").disabled=true;const data=await rpc("socio_confirmar",{p_token:token,p_resposta:value});if(data?.ok===false)throw new Error(data.mensagem||"Não foi possível salvar.");setStatus("rsvpStatus",value==="vou"?"Presença confirmada.":"Ausência registrada.");await refresh();}
-    catch(e){setStatus("rsvpStatus",e.message||"Erro ao salvar.",true);}finally{$("yesBtn").disabled=$("noBtn").disabled=false;}
+
+  async function refresh(initial = false) {
+    const data = await rpc("obter_painel_socio", {
+      p_token: token
+    });
+
+    if (!data || !data.socio) {
+      if (data?.requer_ativacao) {
+        notice(
+          "Seu acesso ainda precisa ser ativado. Solicite à administração o código de ativação. A tela de ativação será integrada na próxima etapa."
+        );
+      } else {
+        notice("Link individual inválido, revogado ou ainda não ativado.");
+      }
+
+      if (initial) $("app").classList.add("hidden");
+      throw new Error("Não foi possível validar o acesso do sócio.");
+    }
+
+    const game = data.jogo;
+    const confirmed = Array.isArray(data.confirmados)
+      ? data.confirmados
+      : [];
+    const response = data.minha_confirmacao;
+
+    $("memberName").textContent = data.socio.nome || "Sócio";
+    $("memberMessage").textContent =
+      "Confirme sua presença para o próximo jogo.";
+
+    $("rsvpStatus").textContent = response === "sim"
+      ? "Sua resposta: Vou jogar"
+      : response === "nao"
+        ? "Sua resposta: Não vou"
+        : "Você ainda não respondeu.";
+
+    $("gameTitle").textContent = game
+      ? "Jogo de " + formatDate(game.data_jogo)
+      : "Próximo jogo";
+
+    $("gamePill").textContent = game
+      ? String(game.hora || "").slice(0, 5)
+      : "Sem jogo";
+
+    $("gameInfo").textContent = game
+      ? (game.fechado
+          ? "Este jogo está fechado para novas confirmações."
+          : "Confira sua presença para este jogo.")
+      : "Ainda não há jogo publicado.";
+
+    $("playersCount").textContent = confirmed.length;
+    $("keepersCount").textContent = "—";
+    $("reservesCount").textContent = game
+      ? Math.max(0, 18 - confirmed.length)
+      : "—";
+
+    $("confirmedCount").textContent = confirmed.length;
+    renderList(
+      "confirmedList",
+      confirmed,
+      "Ainda não há participantes confirmados."
+    );
+
+    // obter_painel_socio não retorna a lista dos sócios pendentes.
+    $("pendingCount").textContent = "—";
+    renderList(
+      "pendingList",
+      [],
+      "A lista de pendentes ainda precisa de uma função no banco."
+    );
+
+    const guest = data.meu_convidado;
+    $("guestName").value = guest?.nome || "";
+    $("guestPhone").value = "";
+
+    const canRespond = !!game && !game.fechado;
+    $("yesBtn").disabled = !canRespond;
+    $("noBtn").disabled = !canRespond;
+    $("guestBtn").disabled =
+      !canRespond || response !== "sim" || !data.pode_convidar;
+
+    // A função atual não permite excluir convidados.
+    $("removeGuestBtn").disabled = true;
+
+    showInstallOption();
   }
-  async function saveGuest(){
-    const nome=$("guestName").value.trim(),telefone=$("guestPhone").value.trim();if(!nome){setStatus("guestStatus","Informe o nome do convidado.",true);return;}
-    try{const data=await rpc("socio_salvar_convidado",{p_token:token,p_nome:nome,p_telefone:telefone||null});if(data?.ok===false)throw new Error(data.mensagem||"Não foi possível salvar.");setStatus("guestStatus","Convidado salvo.");await refresh();}
-    catch(e){setStatus("guestStatus",e.message||"Erro ao salvar convidado.",true);}
+
+  async function answer(willPlay) {
+    if (busy) return;
+    busy = true;
+    $("yesBtn").disabled = true;
+    $("noBtn").disabled = true;
+
+    try {
+      const data = await rpc("confirmar_presenca", {
+        p_token: token,
+        p_confirmou: willPlay
+      });
+
+      if (data?.erro) throw new Error(data.erro);
+      if (data?.ok !== true) {
+        throw new Error("O banco não confirmou a alteração.");
+      }
+
+      status(
+        "rsvpStatus",
+        willPlay ? "Presença confirmada." : "Ausência registrada."
+      );
+
+      await refresh();
+    } catch (error) {
+      status(
+        "rsvpStatus",
+        error.message || "Não foi possível salvar sua resposta.",
+        true
+      );
+    } finally {
+      busy = false;
+      $("yesBtn").disabled = false;
+      $("noBtn").disabled = false;
+      try {
+        await refresh();
+      } catch (_) {}
+    }
   }
-  async function removeGuest(){
-    try{const data=await rpc("socio_remover_convidado",{p_token:token});if(data?.ok===false)throw new Error(data.mensagem||"Não foi possível remover.");$("guestName").value="";$("guestPhone").value="";setStatus("guestStatus","Convidado removido.");await refresh();}
-    catch(e){setStatus("guestStatus",e.message||"Erro ao remover convidado.",true);}
+
+  async function saveGuest() {
+    const name = $("guestName").value.trim();
+
+    if (name.length < 3) {
+      status(
+        "guestStatus",
+        "Informe o nome completo do convidado.",
+        true
+      );
+      return;
+    }
+
+    $("guestBtn").disabled = true;
+
+    try {
+      const data = await rpc("cadastrar_convidado", {
+        p_token: token,
+        p_nome: name
+      });
+
+      if (data?.erro) throw new Error(data.erro);
+      if (data?.ok !== true) {
+        throw new Error("O banco não confirmou o cadastro.");
+      }
+
+      status("guestStatus", "Convidado cadastrado.");
+      await refresh();
+    } catch (error) {
+      status(
+        "guestStatus",
+        error.message || "Não foi possível cadastrar o convidado.",
+        true
+      );
+    } finally {
+      try {
+        await refresh();
+      } catch (_) {}
+    }
   }
-  async function refresh(){
-    try{const data=await rpc("socio_resumo",{p_token:token});if(data?.ok===false)throw new Error(data.mensagem||"Não foi possível atualizar.");
-      $("playersCount").textContent=data.jogadores??0;$("keepersCount").textContent=data.goleiros??0;$("reservesCount").textContent=data.reservas??0;
-      $("rsvpStatus").textContent=data.confirmacao?`Sua resposta: ${data.confirmacao==="vou"?"Vou jogar":"Não vou"}`:"Você ainda não respondeu.";
-      $("guestName").value=data.convidado_nome||"";$("guestPhone").value=data.convidado_telefone||"";
-      $("confirmedCount").textContent=(data.confirmados||[]).length;$("pendingCount").textContent=(data.pendentes||[]).length;
-      renderList("confirmedList",data.confirmados,"Ainda não há sócios confirmados.",true);renderList("pendingList",data.pendentes,"Todos os sócios já responderam.");
-      $("guestBtn").disabled=!data.jogo||data.confirmacao!=="vou";$("removeGuestBtn").disabled=!data.jogo;
-    }catch(e){showSetup(e.message||"Erro ao atualizar.");}
-  }
-  window.addEventListener("beforeinstallprompt",event=>{event.preventDefault();installPrompt=event;});
-  window.addEventListener("appinstalled",()=>{installPrompt=null;$("installArea").classList.add("hidden");setStatus("installHelp","Aplicativo instalado.");});
-  window.matchMedia("(display-mode: standalone)").addEventListener?.("change",showInstallOption);
+
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+    installPrompt = event;
+    showInstallOption();
+  });
+
+  window.addEventListener("appinstalled", () => {
+    installPrompt = null;
+    showInstallOption();
+    status("installHelp", "Aplicativo instalado.");
+  });
+
   load();
-  if("serviceWorker" in navigator && location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(()=>{});
+
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
 })();
