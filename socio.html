@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#176b45">
+  <title>Área do sócio · Futebol de Sexta</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./">
+      <span class="brand-icon">⚽</span>
+      <span><strong>Futebol de Sexta</strong><small>Área do sócio</small></span>
+    </a>
+    <a class="btn btn-light" href="./">Início</a>
+  </header>
+  <main class="container">
+    <section class="card">
+      <div class="status-line"><span class="eyebrow">ACESSO AO GRUPO</span><span id="connectionStatus" class="status">Verificando...</span></div>
+      <h1 id="identityText">Bem-vindo!</h1>
+      <p id="identityHint" class="muted">Abra seu link individual para acessar sua participação.</p>
+      <div id="activationBox" class="activation-box hidden">
+        <label for="activationCode">Código de ativação</label>
+        <input id="activationCode" autocomplete="one-time-code" placeholder="Digite o código recebido">
+        <button id="activateBtn" class="btn btn-primary btn-block" type="button">Ativar meu acesso</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="status-line"><span class="eyebrow">PRÓXIMO JOGO</span><span id="gameStatus" class="status">Aguardando</span></div>
+      <h2 id="gameDate">Carregando...</h2>
+      <p id="gameSubtitle" class="muted">Consulte e confirme sua presença.</p>
+      <div class="capacity">
+        <div class="capacity-heading"><strong>Vagas ocupadas</strong><strong id="countLabel">— / 18</strong></div>
+        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+      </div>
+      <div id="closedNotice" class="notice hidden">As confirmações estão fechadas ou todas as vagas foram preenchidas.</div>
+      <div id="confirmationArea" class="action-area hidden">
+        <h3>Você vai jogar?</h3>
+        <div class="button-row">
+          <button id="yesBtn" class="btn btn-primary" type="button">Vou jogar</button>
+          <button id="noBtn" class="btn btn-secondary" type="button">Não vou</button>
+        </div>
+        <p id="confirmationMessage" class="message" aria-live="polite"></p>
+      </div>
+      <div id="guestArea" class="guest-area hidden">
+        <h3>Levar um convidado</h3>
+        <p class="muted">Um convidado por sócio, conforme disponibilidade de vagas.</p>
+        <label for="guestName">Nome do convidado</label>
+        <input id="guestName" maxlength="100" placeholder="Nome completo">
+        <button id="guestBtn" class="btn btn-primary btn-block" type="button">Cadastrar convidado</button>
+        <p id="guestMessage" class="message" aria-live="polite"></p>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Confirmados</h2>
+      <div id="participantsList"><p class="muted">A lista será carregada após a consulta ao banco.</p></div>
+    </section>
+    <footer><a href="./">Voltar à tela inicial</a></footer>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="socio.js"></script>
+</body>
+</html>

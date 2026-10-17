@@ -1,40 +1,54 @@
-FUTEBOL DE SEXTA — pacote atualizado para Acode + Supabase
-========================================================
-Projeto Supabase: znkdjbnxbpqjeaywwnpn
-URL: https://znkdjbnxbpqjeaywwnpn.supabase.co
+FUTEBOL DE SEXTA — arquivos para Acode
+=====================================
 
-ARQUIVOS
-- index.html / style.css / app.js: tela dos sócios, com confirmados e pendentes
-- admin.html / admin.js: área administrativa separada, com CRUD e links individuais
-- config.js: URL e chave publishable
-- supabase.sql: esquema original e bloco de atualização SQL ao final
-- manifest.json / icon.svg / sw.js: instalação PWA
+O QUE VEM NESTA PASTA
+- index.html: tela principal
+- style.css: visual para celular
+- app.js: confirmações e convidados
+- config.js: conexão com Supabase (preencher)
+- supabase.sql: estrutura inicial do banco e regras RPC
+- manifest.json, icon.svg, sw.js: instalação PWA
+- Este arquivo: instruções
 
-ANTES DE PUBLICAR — IMPORTANTE
-1. Faça uma cópia de segurança dos arquivos atuais.
-2. No Supabase, abra SQL Editor > New query.
-3. Abra supabase.sql e copie SOMENTE o bloco final que começa por:
-   ATUALIZAÇÃO DO APLICATIVO: listas da tela inicial e CRUD administrativo
-   Execute esse bloco no projeto znkdjbnxbpqjeaywwnpn.
-   Não execute novamente todo o esquema inicial se as tabelas já existem.
-4. Confirme que config.js contém a URL e a chave publishable corretas para o mesmo projeto.
-   Nunca use service_role ou sb_secret no navegador.
-5. Envie todos os arquivos da pasta Futebol_de_Sexta para a mesma pasta do GitHub Pages.
+IMPORTANTE
+Esta é a primeira versão funcional de interface + base de dados. Ela ainda NÃO está pronta para uso público até você configurar o Supabase, criar os sócios e publicar um jogo. A área administrativa dentro do app ainda não está implementada; cadastros iniciais são feitos no painel Supabase. Não coloque uma chave service_role no site.
 
-COMO USAR
-- Tela dos sócios: index.html (cada sócio deve usar o próprio link com ?socio=TOKEN).
-- Administração separada: admin.html. Entrar com usuário autenticado no Supabase que também esteja na tabela public.administradores.
-- Criação/abertura do jogo fica dentro da área administrativa.
-- CRUD de sócios: editar nome, desativar/reativar, excluir e gerar novo link.
-- Para reenviar um link perdido, use “Gerar novo link para reenviar”. Por segurança, o link anterior é invalidado. Copie o novo link e envie ao sócio correto.
-- Excluir um sócio remove também as confirmações e convidados relacionados, pois o banco usa exclusão em cascata. O painel pede confirmação antes da exclusão.
+PASSO 1 — COPIAR PARA O ACODE
+1. Baixe e extraia o ZIP.
+2. No Acode, abra a pasta futebol_de_sexta_acode.
+3. Confira se index.html, style.css, app.js, config.js, manifest.json, icon.svg e sw.js estão na mesma pasta.
 
-TELA INICIAL
-- Mostra os sócios que confirmaram “Vou jogar” e os sócios ativos que ainda não responderam.
-- Os nomes e listas vêm da função segura socio_resumo no Supabase.
-- O botão “Ativar meu acesso” só é mostrado ao abrir um link individual fora do modo instalado. Em navegadores que não oferecem o evento de instalação, o botão mostra as instruções para adicionar à tela inicial. A web não consegue detectar universalmente a instalação em todos os navegadores; quando o app está aberto em modo instalado, o botão fica oculto.
+PASSO 2 — CRIAR O SUPABASE
+1. Entre em https://supabase.com e crie um projeto.
+2. Abra SQL Editor > New query.
+3. Abra o arquivo supabase.sql, copie tudo e cole no SQL Editor.
+4. Execute. Se aparecer erro, pare e envie a mensagem para correção.
 
-NOTAS
-- Não compartilhe links individuais publicamente. Qualquer pessoa que receba um link válido poderá agir como aquele sócio.
-- Teste com dois sócios antes de divulgar a atualização para o grupo.
-- O service worker foi atualizado para renovar o cache. Se ainda aparecer a versão antiga, feche e reabra o navegador ou limpe os dados/cache do site.
+PASSO 3 — CONFIGURAR A CONEXÃO
+1. No Supabase, abra Project Settings > API (ou Connect, dependendo da interface).
+2. Copie a Project URL.
+3. Copie a chave publicável (publishable/anon). NÃO copie service_role/secret.
+4. Abra config.js no Acode e substitua:
+   COLE_AQUI_A_URL_DO_PROJETO
+   CHAVE PUBLICA eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpua2RqYm54YnBxamVheXd3bnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwNzk3MjIsImV4cCI6MjEwNzY1NTcyMn0.RGOoSwcQVNCaOSM2ZvGD4L_umGZZPvJ6AU6AlAbIs1E
+5. Salve.
+
+PASSO 4 — CADASTRAR SÓCIOS E LINKS
+A geração de links individuais e códigos ainda precisa ser feita por uma rotina administrativa segura. Não invente tokens manualmente nem compartilhe links entre sócios. Antes de colocar o app em uso real, precisamos criar a tela administrativa que gera tokens fortes e códigos de ativação, cadastra sócios, publica jogos, registra presença real e permite reabrir jogos.
+
+PASSO 5 — PUBLICAR
+Para instalar como aplicativo, publique os arquivos em um endereço HTTPS, por exemplo GitHub Pages. PWA e service worker não funcionam corretamente abrindo o arquivo direto como file://.
+Depois de publicar, cada sócio receberá o próprio link, por exemplo:
+https://SEU-USUARIO.github.io/SEU-REPOSITORIO/?socio=TOKEN_INDIVIDUAL
+O exemplo acima é ilustrativo; não use o mesmo token para todos.
+
+LIMITES DESTA VERSÃO
+- Capacidade inicial configurada em 18 pessoas no total (14 linha + 2 goleiros + 2 reservas).
+- O banco de dados bloqueia confirmação e convite quando o jogo está fechado ou chega a 18 participantes.
+- Esta versão não monta automaticamente os dois times nem inclui a área administrativa completa.
+- A ativação por código está preparada na interface e SQL, mas o fluxo de criação e entrega dos códigos depende da futura tela administrativa.
+- A instalação PWA não autentica a pessoa por hardware. Link individual é um segredo: quem o recebe pode tentar usá-lo; por isso não o encaminhe em grupos.
+- Antes de usar com todos, recomendo testar com 2 sócios fictícios e um jogo de teste.
+
+PRÓXIMA ETAPA RECOMENDADA
+Implementar a área administrativa segura com login de administrador, cadastro de sócios, geração de links e códigos, criação automática das próximas sextas, regras editáveis, lista de presença real e divisão dos times.

@@ -1,17 +1,13 @@
 {
   "name": "Futebol de Sexta",
   "short_name": "Futebol Sexta",
-  "start_url": "./index.html",
+  "description": "Informações e confirmações do Futebol de Sexta",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f2f6f3",
-  "theme_color": "#123b2b",
-  "description": "Confirmação de presença do grupo Futebol de Sexta",
+  "background_color": "#f3f6f4",
+  "theme_color": "#176b45",
   "icons": [
-    {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
+    {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
   ]
 }

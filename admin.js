@@ -1,37 +1,133 @@
-(()=>{
+(() => {
   "use strict";
-  const $=id=>document.getElementById(id),cfg=window.FUTEBOL_CONFIG||{};let client=null;
-  const status=(id,msg,error=false)=>{const e=$(id);if(!e)return;e.textContent=msg||"";e.classList.toggle("error",!!error)};
-  const notice=msg=>{$("notice").textContent=msg;$("notice").classList.remove("hidden")};
-  async function call(fn,args={}){const {data,error}=await client.rpc(fn,args);if(error)throw error;return data;}
-  async function init(){
-    if(!cfg.supabaseUrl||!cfg.supabasePublishableKey||cfg.supabasePublishableKey.includes("COLE_AQUI")){notice("Configure a chave publishable no config.js.");return;}
-    if(!window.supabase?.createClient){notice("Não foi possível carregar o Supabase. Verifique a conexão.");return;}
-    client=window.supabase.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey);
-    $("loginBtn").onclick=login;$('logoutBtn').onclick=logout;$('createGameBtn').onclick=createGame;$('createMemberBtn').onclick=createMember;$('copyLinkBtn').onclick=copyLink;$('shareLinkBtn').onclick=shareLink;$('reloadBtn').onclick=refresh;$('reloadMembersBtn').onclick=refresh;
-    const {data:{session}}=await client.auth.getSession();if(session)await showAdmin();
+  const cfg = window.FUTEBOL_CONFIG || {};
+  const $ = id => document.getElementById(id);
+  let db = null, currentGame = null;
+
+  const say = (id,msg,error=false) => {
+    const el=$(id); if(!el)return;
+    el.textContent=msg || "";
+    el.classList.toggle("error-text",!!error);
+  };
+  const esc = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  async function loadCurrentGame() {
+    const {data,error}=await db.rpc("obter_painel_publico");
+    if(error) throw error;
+    currentGame=data?.jogo || null;
+    if(!currentGame) {
+      $("currentGameInfo").textContent="Nenhum jogo futuro cadastrado.";
+      $("toggleGameBtn").disabled=true;
+      return;
+    }
+    $("currentGameInfo").textContent=`Jogo: ${currentGame.data_jogo} às ${String(currentGame.hora || "19:30").slice(0,5)}. Situação: ${currentGame.fechado ? "fechado" : "aberto"}. Vagas ocupadas: ${data.total_ocupadas ?? 0}/18.`;
+    $("toggleGameBtn").textContent=currentGame.fechado ? "Reabrir confirmações" : "Fechar confirmações";
+    $("toggleGameBtn").disabled=false;
   }
-  async function login(){status('loginStatus','');try{const {error}=await client.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error)throw error;await showAdmin();}catch(e){status('loginStatus',e.message||'Falha no login.',true);}}
-  async function logout(){await client.auth.signOut();$('admin').classList.add('hidden');$('login').classList.remove('hidden');}
-  async function showAdmin(){try{await call('admin_resumo');$('login').classList.add('hidden');$('admin').classList.remove('hidden');await refresh();}catch(e){$('admin').classList.add('hidden');$('login').classList.remove('hidden');status('loginStatus','Conta sem permissão administrativa. Verifique o UUID na tabela administradores.',true);}}
-  async function refresh(){try{const r=await call('admin_resumo');$('summary').textContent=r.jogo?`Jogo: ${r.jogo.data} às ${r.jogo.hora}${r.jogo.local?' · '+r.jogo.local:''} | Confirmados: ${r.vou} | Não vão: ${r.nao} | Convidados: ${r.convidados}`:'Nenhum jogo aberto. Crie o próximo jogo abaixo.';await loadMembers();}catch(e){notice(e.message||'Erro ao carregar painel.');}}
-  async function loadMembers(){try{const list=await call('admin_listar_socios');const root=$('membersList');root.replaceChildren();if(!Array.isArray(list)||!list.length){root.textContent='Nenhum sócio cadastrado.';return;}
-    list.forEach(s=>{const card=document.createElement('article');card.className='member-card';
-      const title=document.createElement('div');title.className='row';const name=document.createElement('strong');name.textContent=s.nome+(s.ativo?'':' (desativado)');const badge=document.createElement('span');badge.className='pill';badge.textContent=s.ativo?'Ativo':'Desativado';title.append(name,badge);card.append(title);
-      const edit=document.createElement('label');edit.textContent='Nome do sócio';const input=document.createElement('input');input.value=s.nome;input.maxLength=100;edit.append(input);card.append(edit);
-      const actions=document.createElement('div');actions.className='actions';
-      const save=document.createElement('button');save.className='primary';save.textContent='Salvar alteração';save.onclick=async()=>{const n=input.value.trim();if(n.length<2){notice('Informe um nome com pelo menos 2 caracteres.');return;}try{await call('admin_editar_socio',{p_id:s.id,p_nome:n});notice('Cadastro atualizado.');await refresh();}catch(e){notice(e.message||'Não foi possível editar.');}};actions.append(save);
-      const link=document.createElement('button');link.className='secondary';link.textContent='Gerar novo link para reenviar';link.onclick=async()=>{if(!confirm('Gerar novo link para '+s.nome+'? O link anterior deixará de funcionar.'))return;try{const token=randomToken(),hash=await sha256(token);await call('admin_gerar_link_socio',{p_id:s.id,p_token_hash:hash});const u=new URL('index.html',location.href);u.searchParams.set('socio',token);$('generatedLink').value=u.href;status('memberStatus','Novo link gerado para '+s.nome+'. Copie e reenvie pelo WhatsApp.');$('generatedLink').scrollIntoView({behavior:'smooth',block:'center'});await copyLink(false);}catch(e){notice(e.message||'Não foi possível gerar o link.');}};actions.append(link);
-      const toggle=document.createElement('button');toggle.className='secondary';toggle.textContent=s.ativo?'Desativar':'Reativar';toggle.onclick=async()=>{if(!confirm((s.ativo?'Desativar':'Reativar')+' o acesso de '+s.nome+'?'))return;try{await call(s.ativo?'admin_desativar_socio':'admin_ativar_socio',{p_id:s.id});await refresh();}catch(e){notice(e.message||'Não foi possível alterar o acesso.');}};actions.append(toggle);
-      const del=document.createElement('button');del.className='danger';del.textContent='Excluir sócio';del.onclick=async()=>{if(!confirm('Excluir definitivamente '+s.nome+'? As confirmações e convidados vinculados também serão apagados.'))return;try{await call('admin_excluir_socio',{p_id:s.id});notice('Sócio excluído.');await refresh();}catch(e){notice(e.message||'Não foi possível excluir.');}};actions.append(del);
-      card.append(actions);root.append(card);
-    });
-  }catch(e){notice(e.message||'Não foi possível listar os sócios.');}}
-  async function createGame(){status('gameStatus','');try{const d=$('gameDate').value;if(!d)throw Error('Escolha a data do jogo.');const result=await call('admin_criar_jogo',{p_data:d,p_local:$('gameLocation').value.trim()||null,p_hora:$('gameTime').value||'19:30'});if(result?.ok===false)throw Error(result.mensagem||'Não foi possível criar o jogo.');status('gameStatus','Jogo criado/aberto com sucesso.');await refresh();}catch(e){status('gameStatus',e.message||'Erro ao criar jogo.',true);}}
-  function randomToken(){const b=new Uint8Array(32);crypto.getRandomValues(b);return Array.from(b,x=>x.toString(16).padStart(2,'0')).join('');}
-  async function sha256(s){const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(h),x=>x.toString(16).padStart(2,'0')).join('');}
-  async function createMember(){status('memberStatus','');try{if(!crypto?.subtle)throw Error('Abra o site em HTTPS para gerar um link seguro.');const name=$('memberNameInput').value.trim();if(name.length<2)throw Error('Informe o nome do sócio.');const token=randomToken(),hash=await sha256(token);const result=await call('admin_criar_socio',{p_nome:name,p_token_hash:hash});if(result?.ok===false)throw Error(result.mensagem||'Não foi possível cadastrar.');const link=new URL('index.html',location.href);link.searchParams.set('socio',token);$('generatedLink').value=link.href;$('memberNameInput').value='';status('memberStatus','Sócio cadastrado. Copie e envie o link individual.');await refresh();}catch(e){status('memberStatus',e.message||'Erro ao cadastrar sócio.',true);}}
-  async function copyLink(showStatus=true){const v=$('generatedLink').value;if(!v){if(showStatus)status('memberStatus','Gere ou selecione um link primeiro.',true);return;}try{await navigator.clipboard.writeText(v);if(showStatus)status('memberStatus','Link copiado. Envie somente ao sócio correto.');}catch(e){$('generatedLink').focus();$('generatedLink').select();if(showStatus)status('memberStatus','Selecione o link e copie manualmente.');}}
-  async function shareLink(){const v=$('generatedLink').value;if(!v){status('memberStatus','Gere um link primeiro.',true);return;}const msg='Seu link individual do Futebol de Sexta: '+v;if(navigator.share){try{await navigator.share({title:'Futebol de Sexta',text:msg});return;}catch(e){if(e.name==='AbortError')return;}}location.href='https://wa.me/?text='+encodeURIComponent(msg);}
-  init();
+
+  async function login() {
+    const email=$("adminEmail").value.trim(), password=$("adminPassword").value;
+    if(!email || !password) return say("adminMessage","Informe e-mail e senha.",true);
+    $("adminSubmitBtn").disabled=true; say("adminMessage","Entrando...");
+    try {
+      const {data,error}=await db.auth.signInWithPassword({email,password});
+      if(error) throw error;
+      if(!data.session) throw new Error("Não foi possível iniciar a sessão.");
+      await showAdmin();
+      $("adminPassword").value="";
+      say("adminMessage","");
+    } catch(e) { say("adminMessage",e.message || "Falha no login.",true); }
+    finally { $("adminSubmitBtn").disabled=false; }
+  }
+
+  async function showAdmin() {
+    const {data:sessionData,error:sessionError}=await db.auth.getSession();
+    if(sessionError) throw sessionError;
+    if(!sessionData.session) {
+      $("adminLoginForm").classList.remove("hidden");
+      $("adminContent").classList.add("hidden");
+      return;
+    }
+    const {data,error}=await db.rpc("admin_verificar_acesso");
+    if(error) throw error;
+    if(data !== true) {
+      await db.auth.signOut();
+      throw new Error("Este usuário não está autorizado na tabela administradores do Supabase.");
+    }
+    $("adminLoginForm").classList.add("hidden");
+    $("adminContent").classList.remove("hidden");
+    await loadCurrentGame();
+  }
+
+  async function logout() {
+    const {error}=await db.auth.signOut();
+    if(error) return say("adminActionMessage",error.message,true);
+    $("adminContent").classList.add("hidden");
+    $("adminLoginForm").classList.remove("hidden");
+    say("adminMessage","Você saiu da administração.");
+  }
+
+  async function createMember() {
+    const name=$("newMemberName").value.trim();
+    if(name.length<3) return say("adminActionMessage","Informe o nome completo do sócio.",true);
+    $("createMemberBtn").disabled=true; say("adminActionMessage","Criando cadastro...");
+    try {
+      const {data,error}=await db.rpc("admin_criar_socio",{p_nome:name});
+      if(error) throw error;
+      if(data?.erro) throw new Error(data.erro);
+      if(!data?.token || !data?.codigo_ativacao) throw new Error("O banco não retornou token e código. Confira o SQL administrativo.");
+      const url=new URL("socio.html",location.href);
+      url.searchParams.set("socio",data.token);
+      $("newMemberResult").classList.remove("hidden");
+      $("newMemberResult").innerHTML=`<h3>Sócio cadastrado</h3><p><strong>Nome:</strong> ${esc(data.nome || name)}</p><p><strong>Link individual:</strong></p><p><a id="memberLink" href="${esc(url.toString())}">${esc(url.toString())}</a></p><p><strong>Código de ativação:</strong></p><p class="activation-code">${esc(data.codigo_ativacao)}</p><button id="copyLinkBtn" class="btn btn-secondary btn-block" type="button">Copiar link</button><p class="muted">Guarde o link e o código. O código é mostrado somente agora.</p>`;
+      $("copyLinkBtn").addEventListener("click",async()=>{
+        try { await navigator.clipboard.writeText(url.toString()); say("adminActionMessage","Link copiado."); }
+        catch { say("adminActionMessage","Não foi possível copiar automaticamente. Selecione e copie o link."); }
+      });
+      $("newMemberName").value="";
+      say("adminActionMessage","Sócio criado. Guarde o link e o código de ativação.");
+    } catch(e) { console.error(e); say("adminActionMessage",e.message || "Não foi possível criar o sócio.",true); }
+    finally { $("createMemberBtn").disabled=false; }
+  }
+
+  async function createGame() {
+    const date=$("gameInputDate").value, time=$("gameInputTime").value || "19:30";
+    if(!date) return say("adminActionMessage","Escolha a data do jogo.",true);
+    $("createGameBtn").disabled=true; say("adminActionMessage","Salvando jogo...");
+    try {
+      const {data,error}=await db.rpc("admin_criar_jogo",{p_data:date,p_hora:time});
+      if(error) throw error;
+      if(data?.erro) throw new Error(data.erro);
+      say("adminActionMessage",`Jogo salvo para ${date}, às ${time}.`);
+      await loadCurrentGame();
+    } catch(e) { say("adminActionMessage",e.message || "Não foi possível salvar o jogo.",true); }
+    finally { $("createGameBtn").disabled=false; }
+  }
+
+  async function toggleGame() {
+    if(!currentGame?.id) return say("adminActionMessage","Não existe jogo para alterar.",true);
+    $("toggleGameBtn").disabled=true;
+    try {
+      const nextClosed=!currentGame.fechado;
+      const {data,error}=await db.rpc("admin_definir_jogo_fechado",{p_jogo_id:currentGame.id,p_fechado:nextClosed});
+      if(error) throw error;
+      if(data?.erro) throw new Error(data.erro);
+      say("adminActionMessage",nextClosed ? "Confirmações fechadas." : "Confirmações reabertas.");
+      await loadCurrentGame();
+    } catch(e) { say("adminActionMessage",e.message || "Não foi possível alterar o jogo.",true); }
+    finally { $("toggleGameBtn").disabled=false; }
+  }
+
+  async function init() {
+    if(!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY || !window.supabase?.createClient) throw new Error("Confira config.js e a conexão com a internet.");
+    db=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
+    $("adminSubmitBtn").addEventListener("click",login);
+    $("adminPassword").addEventListener("keydown",e=>{if(e.key==="Enter")login();});
+    $("adminLogoutBtn").addEventListener("click",logout);
+    $("createMemberBtn").addEventListener("click",createMember);
+    $("createGameBtn").addEventListener("click",createGame);
+    $("toggleGameBtn").addEventListener("click",toggleGame);
+    try { await showAdmin(); } catch(e) { say("adminMessage",e.message || "Não foi possível abrir a administração.",true); }
+  }
+  init().catch(e=>{console.error(e);say("adminMessage",e.message || "Erro ao iniciar.",true);});
 })();

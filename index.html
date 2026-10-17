@@ -1,71 +1,103 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#123b2b">
-  <meta name="description" content="Confirmação de presença do grupo Futebol de Sexta">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#176b45">
+  <meta name="description" content="Futebol de Sexta">
+  <title>Futebol de Sexta</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
-  <title>Futebol de Sexta</title>
 </head>
 <body>
-  <header class="top">
-    <div class="ball">⚽</div>
-    <div><h1>Futebol de Sexta</h1><p>Confirmação de presença</p></div>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Início">
+      <span class="brand-icon">⚽</span>
+      <span>
+        <strong>Futebol de Sexta</strong>
+        <small>Nossa turma, nosso futebol</small>
+      </span>
+    </a>
+
+    <nav class="header-actions">
+      <a class="btn btn-light btn-small" href="socio.html">
+        Sócio
+      </a>
+      <a class="btn btn-primary btn-small" href="admin.html">
+        Administrador
+      </a>
+    </nav>
   </header>
-  <main>
-    <section id="setupNotice" class="notice hidden" role="status"></section>
-    <section id="loading" class="panel">Carregando informações…</section>
-    <section id="app" class="hidden">
-      <section class="panel">
-        <p class="eyebrow">SEU ACESSO INDIVIDUAL</p>
-        <h2 id="memberName">Sócio</h2>
-        <p id="memberMessage" class="muted">Confirme sua presença para o próximo jogo.</p>
-        <div class="actions">
-          <button id="yesBtn" class="primary">Vou jogar</button>
-          <button id="noBtn" class="secondary">Não vou</button>
+
+  <main class="container">
+
+    <section class="card hero-card">
+      <div class="status-line">
+        <span class="eyebrow">PRÓXIMO JOGO</span>
+        <span id="gameStatus" class="status">Carregando...</span>
+      </div>
+
+      <h1 id="gameDate">Consultando jogo...</h1>
+
+      <p id="gameSubtitle" class="muted">
+        Carregando informações.
+      </p>
+
+      <div class="capacity">
+        <div class="capacity-heading">
+          <strong>Vagas ocupadas</strong>
+          <strong id="countLabel">— / 18</strong>
         </div>
-        <p id="rsvpStatus" class="status" aria-live="polite"></p>
-        <div id="installArea" class="install-area hidden">
-          <p class="muted">Para abrir o Futebol de Sexta pelo ícone do celular, adicione o aplicativo à tela inicial.</p>
-          <button id="installBtn" class="primary">Ativar meu acesso</button>
-          <p id="installHelp" class="status" aria-live="polite"></p>
+
+        <div class="progress-track">
+          <div id="progressBar" class="progress-bar"></div>
         </div>
-      </section>
-      <section class="panel">
-        <div class="row"><h2 id="gameTitle">Próximo jogo</h2><span id="gamePill" class="pill">Carregando…</span></div>
-        <p id="gameInfo" class="muted">As informações do jogo serão exibidas aqui.</p>
-        <div class="stats">
-          <div><strong id="playersCount">0</strong><span>Jogadores</span></div>
-          <div><strong id="keepersCount">0</strong><span>Goleiros</span></div>
-          <div><strong id="reservesCount">0</strong><span>Reservas</span></div>
-        </div>
-      </section>
-      <section class="panel list-panel">
-        <div class="row"><h2>✅ Confirmaram presença</h2><span id="confirmedCount" class="count">0</span></div>
-        <p class="muted">Sócios que responderam “Vou jogar”.</p>
-        <ul id="confirmedList" class="member-list"><li class="muted">Carregando…</li></ul>
-      </section>
-      <section class="panel list-panel">
-        <div class="row"><h2>⏳ Falta confirmar</h2><span id="pendingCount" class="count">0</span></div>
-        <p class="muted">Sócios ativos que ainda não responderam.</p>
-        <ul id="pendingList" class="member-list"><li class="muted">Carregando…</li></ul>
-      </section>
-      <section class="panel">
-        <h2>Meu convidado</h2>
-        <p class="muted">O convidado fica vinculado ao seu cadastro. Confirme que vai jogar antes de informar um convidado.</p>
-        <label for="guestName">Nome do convidado</label>
-        <input id="guestName" maxlength="100" placeholder="Nome completo">
-        <label for="guestPhone">Telefone (opcional)</label>
-        <input id="guestPhone" maxlength="30" inputmode="tel" placeholder="Telefone">
-        <div class="actions"><button id="guestBtn" class="primary">Salvar convidado</button><button id="removeGuestBtn" class="secondary">Remover</button></div>
-        <p id="guestStatus" class="status" aria-live="polite"></p>
-      </section>
+      </div>
+
+      <p id="publicMessage" class="message" aria-live="polite"></p>
+
+      <a class="btn btn-primary btn-block" href="socio.html">
+        Acessar como sócio
+      </a>
     </section>
+
+    <section class="card players-card">
+      <div class="status-line">
+        <h2>Lista de jogadores</h2>
+        <button
+          id="refreshBtn"
+          class="btn btn-secondary btn-small"
+          type="button"
+        >
+          Atualizar
+        </button>
+      </div>
+
+      <h3 class="section-heading">Confirmados</h3>
+      <div id="confirmedList" class="people-list">
+        <p class="muted">Carregando...</p>
+      </div>
+
+      <h3 class="section-heading">Sem resposta</h3>
+      <div id="pendingList" class="people-list">
+        <p class="muted">Carregando...</p>
+      </div>
+
+      <h3 class="section-heading">Não vão jogar</h3>
+      <div id="declinedList" class="people-list">
+        <p class="muted">Carregando...</p>
+      </div>
+    </section>
+
+    <footer>
+      Futebol de Sexta
+      <small> Criado por Edilson de Lima Nascimento</small>
+    </footer>
+
   </main>
-  <footer>Futebol de Sexta · Aplicativo do grupo</footer>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
