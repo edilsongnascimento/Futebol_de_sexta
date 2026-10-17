@@ -26,7 +26,7 @@
     list.innerHTML = participants.map(p => `<div class="person">
       <div class="avatar">${esc((p.nome || "?").slice(0,1).toUpperCase())}</div>
       <div class="person-info"><div class="person-name">${esc(p.nome)}</div>
-      <div class="person-detail">${p.tipo === "convidado" ? `Convidado de ${esc(p.convidado_por || "sócio")}` : "Sócio"}</div></div>
+      <div class="person-detail">${p.tipo === "convidado" ? `Convidado de ${esc(p.convidado_por || "jogador")}` : "Jogador"}</div></div>
       <span class="status ${p.tipo === "convidado" ? "guest-tag" : ""}">${p.tipo === "convidado" ? "CONVIDADO" : "Confirmado"}</span>
     </div>`).join("");
   }
@@ -46,7 +46,10 @@
     if (!token()) {
       $("connectionStatus").textContent = "Link individual necessário";
       $("identityText").textContent = "Entre pelo seu link individual.";
-      $("identityHint").textContent = "Solicite seu link ao administrador. Use o botão Início para consultar a lista pública.";
+      $("identityHint").textContent = "Solicite seu link individual ao administrador. Use Início para consultar a lista pública de jogadores.";
+      $("gameDate").textContent = "Aguardando link individual";
+      $("gameSubtitle").textContent = "O jogo e a lista pública estão disponíveis na tela inicial.";
+      $("participantsList").innerHTML = '<p class="muted">Abra seu link individual para ver as confirmações.</p>';
       $("confirmationArea").classList.add("hidden");
       $("guestArea").classList.add("hidden");
       return;
@@ -57,14 +60,13 @@
     if (!data?.socio) {
       member = null; game = null;
       $("connectionStatus").textContent = "Acesso não encontrado";
-      $("identityText").textContent = "Não foi possível identificar este sócio.";
-      $("identityHint").textContent = "Confira se o link está completo.";
-      $("activationBox").classList.remove("hidden");
+      $("identityText").textContent = "Não foi possível identificar este jogador.";
+      $("identityHint").textContent = "Esse link não está ativo ou não é válido. Peça ao administrador um novo link individual.";
+      $("participantsList").innerHTML = '<p class="muted">Não foi possível carregar os jogadores confirmados.</p>';
       updateCount(data || {});
       return;
     }
     member = data.socio; game = data.jogo || null; participants = data.confirmados || [];
-    $("activationBox").classList.add("hidden");
     $("connectionStatus").textContent = "Conectado";
     $("identityText").textContent = `Olá, ${member.nome}!`;
     $("identityHint").textContent = "Este é seu acesso individual ao Futebol de Sexta.";
@@ -110,24 +112,12 @@
     } catch(e) { say("guestMessage",e.message || "Não foi possível cadastrar.",true); $("guestBtn").disabled = false; }
   }
 
-  async function activate() {
-    const code = $("activationCode").value.trim();
-    if (!code) return say("identityHint","Digite o código de ativação.",true);
-    try {
-      const {data,error} = await db.rpc("ativar_socio",{p_token:token(),p_codigo:code});
-      if (error) throw error;
-      if (data?.erro) throw new Error(data.erro);
-      location.reload();
-    } catch(e) { say("identityHint",e.message || "Não foi possível ativar o acesso.",true); }
-  }
-
   async function init() {
     if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY || !window.supabase?.createClient) throw new Error("Confira config.js e sua conexão com a internet.");
     db = window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
     $("yesBtn").addEventListener("click",()=>confirm(true));
     $("noBtn").addEventListener("click",()=>confirm(false));
     $("guestBtn").addEventListener("click",addGuest);
-    $("activateBtn").addEventListener("click",activate);
     await load();
   }
   init().catch(e => { console.error(e); $("connectionStatus").textContent = "Erro ao carregar"; say("identityHint",e.message || "Erro ao consultar o banco.",true); });

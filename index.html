@@ -22,14 +22,16 @@
     </a>
 
     <nav class="header-actions">
+      <button class="btn btn-light btn-small install-app-btn" type="button">Instalar app</button>
       <a class="btn btn-light btn-small" href="socio.html">
-        Sócio
+        Jogador
       </a>
       <a class="btn btn-primary btn-small" href="admin.html">
         Administrador
       </a>
     </nav>
   </header>
+  <p id="installMessage" class="install-message" role="status" aria-live="polite" hidden></p>
 
   <main class="container">
 
@@ -59,7 +61,7 @@
       <p id="publicMessage" class="message" aria-live="polite"></p>
 
       <a class="btn btn-primary btn-block" href="socio.html">
-        Acessar como sócio
+        Acessar como jogador
       </a>
     </section>
 
@@ -98,6 +100,7 @@
 
   </main>
 
+  <script src="install.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>

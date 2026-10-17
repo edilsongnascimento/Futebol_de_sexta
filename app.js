@@ -26,10 +26,10 @@
       const isGuest = p.tipo === "convidado";
       const label = isGuest
         ? `<span class="status guest-tag">CONVIDADO</span>`
-        : `<span class="status">${escapeHTML(p.situacao_label || "Sócio")}</span>`;
+        : `<span class="status">${escapeHTML(p.situacao_label || "Jogador")}</span>`;
       const detail = isGuest
-        ? `Convidado de ${escapeHTML(p.convidado_por || "sócio")}`
-        : "Sócio";
+        ? `Convidado de ${escapeHTML(p.convidado_por || "jogador")}`
+        : "Jogador";
       return `<div class="person">
         <div class="avatar">${escapeHTML((p.nome || "?").trim().slice(0,1).toUpperCase())}</div>
         <div class="person-info"><div class="person-name">${escapeHTML(p.nome)}</div><div class="person-detail">${detail}</div></div>
@@ -65,8 +65,8 @@
 
     const combinedConfirmed = confirmed.map(p => ({...p, situacao_label:"Confirmado"}));
     renderPeople("confirmedList", combinedConfirmed, "Ninguém confirmou presença ainda.");
-    renderPeople("pendingList", pending.map(p => ({...p, situacao_label:"Não respondeu"})), "Todos os sócios já responderam.");
-    renderPeople("declinedList", declined.map(p => ({...p, situacao_label:"Não vai"})), "Nenhum sócio informou que não vai.");
+    renderPeople("pendingList", pending.map(p => ({...p, situacao_label:"Não respondeu"})), "Todos os jogadores já responderam.");
+    renderPeople("declinedList", declined.map(p => ({...p, situacao_label:"Não vai"})), "Nenhum jogador informou que não vai.");
     if (!game) showError("Ainda não existe um jogo futuro cadastrado.");
   }
 

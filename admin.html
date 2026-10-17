@@ -10,8 +10,13 @@
 <body>
   <header class="topbar">
     <a class="brand" href="./"><span class="brand-icon">⚽</span><span><strong>Futebol de Sexta</strong><small>Administração</small></span></a>
-    <a class="btn btn-light" href="./">Tela inicial</a>
+    <nav class="header-actions" aria-label="Navegação administrativa">
+      <button class="btn btn-light install-app-btn" type="button">Instalar app</button>
+      <a class="btn btn-light" href="./">Tela inicial</a>
+      <button id="adminLogoutBtn" class="btn btn-light hidden" type="button">Sair do sistema</button>
+    </nav>
   </header>
+  <p id="installMessage" class="install-message" role="status" aria-live="polite" hidden></p>
   <main class="container">
     <section class="card">
       <span class="eyebrow">ÁREA RESTRITA</span>
@@ -26,12 +31,49 @@
       </div>
       <p id="adminMessage" class="message" aria-live="polite"></p>
       <div id="adminContent" class="hidden">
-        <div class="status-line"><h2>Painel administrativo</h2><button id="adminLogoutBtn" class="btn btn-secondary" type="button">Sair</button></div>
+        <div class="status-line"><h2>Painel administrativo</h2></div>
         <hr>
-        <h3>Cadastrar sócio</h3>
-        <label for="newMemberName">Nome do sócio</label>
-        <input id="newMemberName" maxlength="100" placeholder="Nome completo">
-        <button id="createMemberBtn" class="btn btn-primary btn-block" type="button">Criar sócio</button>
+        <h3>Jogadores</h3>
+        <p class="muted">Cadastre, atualize e controle os acessos individuais dos jogadores.</p>
+        <div class="member-toolbar">
+          <label class="sr-only" for="memberSearch">Buscar jogador</label>
+          <input id="memberSearch" type="search" placeholder="Buscar por nome ou telefone">
+          <label class="sr-only" for="memberStatusFilter">Filtrar situação</label>
+          <select id="memberStatusFilter">
+            <option value="ativos">Jogadores ativos</option>
+            <option value="todos">Todos</option>
+            <option value="inativos">Desativados</option>
+          </select>
+        </div>
+        <div id="memberList" class="member-list" aria-live="polite">
+          <p class="muted">Carregando jogadores...</p>
+        </div>
+        <hr>
+        <h3 id="memberFormTitle">Cadastrar jogador</h3>
+        <input id="memberId" type="hidden">
+        <label for="memberName">Nome do jogador</label>
+        <input id="memberName" maxlength="100" autocomplete="name" placeholder="Nome completo" required>
+        <label for="memberPhone">Telefone</label>
+        <input id="memberPhone" type="tel" maxlength="30" autocomplete="tel" placeholder="(00) 00000-0000" required>
+        <label for="memberPosition">Posição</label>
+        <select id="memberPosition" required>
+          <option value="">Selecione a posição</option>
+          <option value="Atacante">Atacante</option>
+          <option value="Zagueiro">Zagueiro</option>
+          <option value="Central">Central</option>
+          <option value="Goleiro">Goleiro</option>
+        </select>
+        <label for="memberLevel">Nível</label>
+        <select id="memberLevel" required>
+          <option value="">Selecione o nível</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+        </select>
+        <div class="button-row">
+          <button id="saveMemberBtn" class="btn btn-primary" type="button">Criar jogador e gerar link</button>
+          <button id="cancelMemberEditBtn" class="btn btn-secondary hidden" type="button">Cancelar edição</button>
+        </div>
         <div id="newMemberResult" class="result-box hidden"></div>
         <hr>
         <h3>Criar ou atualizar jogo</h3>
@@ -49,6 +91,7 @@
     </section>
     <footer>Futebol de Sexta · Administração restrita</footer>
   </main>
+  <script src="install.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="admin.js"></script>

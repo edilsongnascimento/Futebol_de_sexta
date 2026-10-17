@@ -2,7 +2,7 @@
   "use strict";
   const cfg = window.FUTEBOL_CONFIG || {};
   const $ = id => document.getElementById(id);
-  let db = null, currentGame = null;
+  let db = null, currentGame = null, members = [];
 
   const say = (id,msg,error=false) => {
     const el=$(id); if(!el)return;
@@ -46,17 +46,21 @@
     if(!sessionData.session) {
       $("adminLoginForm").classList.remove("hidden");
       $("adminContent").classList.add("hidden");
+      $("adminLogoutBtn").classList.add("hidden");
       return;
     }
     const {data,error}=await db.rpc("admin_verificar_acesso");
     if(error) throw error;
     if(data !== true) {
       await db.auth.signOut();
+      $("adminLogoutBtn").classList.add("hidden");
       throw new Error("Este usuário não está autorizado na tabela administradores do Supabase.");
     }
     $("adminLoginForm").classList.add("hidden");
     $("adminContent").classList.remove("hidden");
+    $("adminLogoutBtn").classList.remove("hidden");
     await loadCurrentGame();
+    await loadMembers();
   }
 
   async function logout() {
@@ -64,30 +68,170 @@
     if(error) return say("adminActionMessage",error.message,true);
     $("adminContent").classList.add("hidden");
     $("adminLoginForm").classList.remove("hidden");
+    $("adminLogoutBtn").classList.add("hidden");
     say("adminMessage","Você saiu da administração.");
   }
 
-  async function createMember() {
-    const name=$("newMemberName").value.trim();
-    if(name.length<3) return say("adminActionMessage","Informe o nome completo do sócio.",true);
-    $("createMemberBtn").disabled=true; say("adminActionMessage","Criando cadastro...");
+  function visibleMembers() {
+    const query=$("memberSearch").value.trim().toLocaleLowerCase("pt-BR");
+    const filter=$("memberStatusFilter").value;
+    return members.filter(member => {
+      if(filter==="ativos" && !member.ativo) return false;
+      if(filter==="inativos" && member.ativo) return false;
+      return `${member.nome} ${member.telefone || ""}`.toLocaleLowerCase("pt-BR").includes(query);
+    });
+  }
+
+  function renderMembers() {
+    const rows=visibleMembers();
+    if(!rows.length) {
+      $("memberList").innerHTML='<p class="muted">Nenhum jogador encontrado.</p>';
+      return;
+    }
+    $("memberList").innerHTML=rows.map(member=>`
+      <article class="member-card ${member.ativo ? "" : "inactive"}">
+        <div class="member-card-heading">
+          <div>
+            <div class="member-card-name">${esc(member.nome)}</div>
+            <div class="member-meta">${esc(member.telefone || "Telefone não informado")} · ${esc(member.posicao || "Posição pendente")} · Nível ${esc(member.nivel ?? "—")}</div>
+          </div>
+          <span class="status ${member.ativo ? "" : "status-closed"}">${member.ativo ? "Ativo" : "Desativado"}</span>
+        </div>
+        <div class="member-actions">
+          <button class="btn btn-secondary" type="button" data-member-action="edit" data-member-id="${esc(member.id)}">Editar</button>
+          <button class="btn btn-secondary" type="button" data-member-action="toggle" data-member-id="${esc(member.id)}">${member.ativo ? "Desativar e revogar link" : "Reativar e gerar novo link"}</button>
+        </div>
+      </article>`).join("");
+  }
+
+  async function loadMembers() {
+    $("memberList").innerHTML='<p class="muted">Carregando jogadores...</p>';
     try {
-      const {data,error}=await db.rpc("admin_criar_socio",{p_nome:name});
+      const {data,error}=await db.rpc("admin_listar_jogadores");
+      if(error) throw error;
+      if(!Array.isArray(data)) throw new Error("O banco retornou uma lista de jogadores inválida.");
+      members=data;
+      renderMembers();
+    } catch(error) {
+      $("memberList").innerHTML='<p class="error-text">Não foi possível carregar os jogadores.</p>';
+      throw error;
+    }
+  }
+
+  function resetMemberForm() {
+    $("memberId").value="";
+    $("memberName").value="";
+    $("memberPhone").value="";
+    $("memberPosition").value="";
+    $("memberLevel").value="";
+    $("memberFormTitle").textContent="Cadastrar jogador";
+    $("saveMemberBtn").textContent="Criar jogador e gerar link";
+    $("cancelMemberEditBtn").classList.add("hidden");
+  }
+
+  function editMember(id) {
+    const member=members.find(row=>row.id===id);
+    if(!member) return say("adminActionMessage","Jogador não encontrado na lista. Atualize os dados.",true);
+    $("memberId").value=member.id;
+    $("memberName").value=member.nome || "";
+    $("memberPhone").value=member.telefone || "";
+    $("memberPosition").value=member.posicao || "";
+    $("memberLevel").value=member.nivel == null ? "" : String(member.nivel);
+    $("memberFormTitle").textContent=`Editar jogador: ${member.nome}`;
+    $("saveMemberBtn").textContent="Salvar alterações";
+    $("cancelMemberEditBtn").classList.remove("hidden");
+    $("memberName").focus();
+  }
+
+  function memberLink(token) {
+    const url=new URL("socio.html",location.href);
+    url.searchParams.set("socio",token);
+    return url;
+  }
+
+  function showMemberLink(member, token) {
+    const url=memberLink(token);
+    $("newMemberResult").classList.remove("hidden");
+    $("newMemberResult").innerHTML=`<h3>Link individual ativado</h3><p><strong>Jogador:</strong> ${esc(member.nome)}</p><p><a id="memberLink" href="${esc(url.toString())}">${esc(url.toString())}</a></p><button id="copyLinkBtn" class="btn btn-secondary btn-block" type="button">Copiar link</button><p class="muted">Este link individual dá acesso à área do jogador. Envie-o somente a ele.</p>`;
+    $("copyLinkBtn").addEventListener("click",async()=>{
+      try { await navigator.clipboard.writeText(url.toString()); say("adminActionMessage","Link copiado."); }
+      catch { say("adminActionMessage","Não foi possível copiar automaticamente. Selecione e copie o link."); }
+    });
+  }
+
+  async function saveMember() {
+    const id=$("memberId").value;
+    const name=$("memberName").value.trim();
+    const phone=$("memberPhone").value.trim();
+    const position=$("memberPosition").value;
+    const level=Number($("memberLevel").value);
+    if(name.length<3) return say("adminActionMessage","Informe o nome completo do jogador.",true);
+    if(!phone) return say("adminActionMessage","Informe o telefone do jogador.",true);
+    if(!position) return say("adminActionMessage","Selecione a posição do jogador.",true);
+    if(![1,2,3].includes(level)) return say("adminActionMessage","Selecione um nível entre 1 e 3.",true);
+    $("newMemberResult").classList.add("hidden");
+    $("newMemberResult").innerHTML="";
+    $("saveMemberBtn").disabled=true;
+    say("adminActionMessage",id ? "Salvando alterações..." : "Criando cadastro...");
+    let saved=false;
+    try {
+      const functionName=id ? "admin_atualizar_jogador" : "admin_criar_jogador";
+      const params={p_nome:name,p_telefone:phone,p_posicao:position,p_nivel:level};
+      if(id) params.p_socio_id=id;
+      const {data,error}=await db.rpc(functionName,params);
       if(error) throw error;
       if(data?.erro) throw new Error(data.erro);
-      if(!data?.token || !data?.codigo_ativacao) throw new Error("O banco não retornou token e código. Confira o SQL administrativo.");
-      const url=new URL("socio.html",location.href);
-      url.searchParams.set("socio",data.token);
-      $("newMemberResult").classList.remove("hidden");
-      $("newMemberResult").innerHTML=`<h3>Sócio cadastrado</h3><p><strong>Nome:</strong> ${esc(data.nome || name)}</p><p><strong>Link individual:</strong></p><p><a id="memberLink" href="${esc(url.toString())}">${esc(url.toString())}</a></p><p><strong>Código de ativação:</strong></p><p class="activation-code">${esc(data.codigo_ativacao)}</p><button id="copyLinkBtn" class="btn btn-secondary btn-block" type="button">Copiar link</button><p class="muted">Guarde o link e o código. O código é mostrado somente agora.</p>`;
-      $("copyLinkBtn").addEventListener("click",async()=>{
-        try { await navigator.clipboard.writeText(url.toString()); say("adminActionMessage","Link copiado."); }
-        catch { say("adminActionMessage","Não foi possível copiar automaticamente. Selecione e copie o link."); }
+      saved=true;
+      if(!id && !data?.token) throw new Error("O banco não retornou o link individual do jogador.");
+      if(!id) showMemberLink({nome:data.nome || name},data.token);
+      resetMemberForm();
+      await loadMembers();
+      say("adminActionMessage",id ? "Dados do jogador atualizados." : "Jogador cadastrado com link individual ativo.");
+    } catch(e) {
+      console.error(e);
+      say("adminActionMessage",saved
+        ? `Dados salvos, mas houve um problema ao concluir a atualização: ${e.message || "falha inesperada."}`
+        : e.message || "Não foi possível salvar os dados do jogador.",true);
+    }
+    finally { $("saveMemberBtn").disabled=false; }
+  }
+
+  async function toggleMember(id) {
+    const member=members.find(row=>row.id===id);
+    if(!member) return say("adminActionMessage","Jogador não encontrado na lista. Atualize os dados.",true);
+    const activating=!member.ativo;
+    const action=activating ? "reativar e gerar um link individual novo para" : "desativar e revogar o link de";
+    if(!window.confirm(`Deseja ${action} ${member.nome}? O histórico será preservado.`)) return;
+    say("adminActionMessage",activating ? "Reativando jogador..." : "Desativando jogador...");
+    let changed=false;
+    try {
+      const {data,error}=await db.rpc("admin_definir_jogador_ativo",{
+        p_socio_id:id,
+        p_ativo:activating
       });
-      $("newMemberName").value="";
-      say("adminActionMessage","Sócio criado. Guarde o link e o código de ativação.");
-    } catch(e) { console.error(e); say("adminActionMessage",e.message || "Não foi possível criar o sócio.",true); }
-    finally { $("createMemberBtn").disabled=false; }
+      if(error) throw error;
+      if(data?.erro) throw new Error(data.erro);
+      changed=true;
+      if(activating) {
+        if(!data?.token) throw new Error("O jogador foi reativado, mas o banco não retornou o novo link.");
+        showMemberLink(member,data.token);
+      }
+      await loadMembers();
+      say("adminActionMessage",activating ? "Jogador reativado. Envie o novo link individual." : "Jogador desativado e link revogado. O histórico foi preservado.");
+    } catch(e) {
+      console.error(e);
+      say("adminActionMessage",changed
+        ? `A situação do jogador foi alterada, mas houve um problema ao atualizar a lista: ${e.message || "falha inesperada."}`
+        : e.message || "Não foi possível alterar o acesso do jogador.",true);
+    }
+  }
+
+  async function handleMemberListClick(event) {
+    const button=event.target.closest("[data-member-action]");
+    if(!button) return;
+    const id=button.dataset.memberId;
+    if(button.dataset.memberAction==="edit") editMember(id);
+    if(button.dataset.memberAction==="toggle") await toggleMember(id);
   }
 
   async function createGame() {
@@ -124,7 +268,11 @@
     $("adminSubmitBtn").addEventListener("click",login);
     $("adminPassword").addEventListener("keydown",e=>{if(e.key==="Enter")login();});
     $("adminLogoutBtn").addEventListener("click",logout);
-    $("createMemberBtn").addEventListener("click",createMember);
+    $("saveMemberBtn").addEventListener("click",saveMember);
+    $("cancelMemberEditBtn").addEventListener("click",resetMemberForm);
+    $("memberSearch").addEventListener("input",renderMembers);
+    $("memberStatusFilter").addEventListener("change",renderMembers);
+    $("memberList").addEventListener("click",handleMemberListClick);
     $("createGameBtn").addEventListener("click",createGame);
     $("toggleGameBtn").addEventListener("click",toggleGame);
     try { await showAdmin(); } catch(e) { say("adminMessage",e.message || "Não foi possível abrir a administração.",true); }

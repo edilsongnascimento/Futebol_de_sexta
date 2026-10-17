@@ -1,54 +1,85 @@
-FUTEBOL DE SEXTA — arquivos para Acode
-=====================================
+FUTEBOL DE SEXTA
+================
 
-O QUE VEM NESTA PASTA
-- index.html: tela principal
-- style.css: visual para celular
-- app.js: confirmações e convidados
-- config.js: conexão com Supabase (preencher)
-- supabase.sql: estrutura inicial do banco e regras RPC
-- manifest.json, icon.svg, sw.js: instalação PWA
-- Este arquivo: instruções
+Este app permite consultar publicamente a lista de jogadores, confirmar
+presenca, cadastrar um convidado e administrar jogadores e jogos.
 
-IMPORTANTE
-Esta é a primeira versão funcional de interface + base de dados. Ela ainda NÃO está pronta para uso público até você configurar o Supabase, criar os sócios e publicar um jogo. A área administrativa dentro do app ainda não está implementada; cadastros iniciais são feitos no painel Supabase. Não coloque uma chave service_role no site.
+ARQUIVOS
+--------
+- index.html, style.css: tela publica e estilos.
+- socio.html, socio.js: area individual do jogador.
+- admin.html, admin.js: painel administrativo.
+- config.js: URL e chave publica do Supabase.
+- COMPLEMENTO_SUPABASE.sql: funcoes e permissoes complementares do banco.
+- MIGRACAO_CRUD_JOGADORES.sql: campos e funcoes para o CRUD administrativo.
+- manifest.json, install.js, sw.js: instalacao e recursos da PWA.
+- icon.svg, icon-192.png, icon-512.png: icones do app.
 
-PASSO 1 — COPIAR PARA O ACODE
-1. Baixe e extraia o ZIP.
-2. No Acode, abra a pasta futebol_de_sexta_acode.
-3. Confira se index.html, style.css, app.js, config.js, manifest.json, icon.svg e sw.js estão na mesma pasta.
+IMPORTANTE SOBRE O BANCO
+------------------------
+O arquivo COMPLEMENTO_SUPABASE.sql nao cria sozinho o banco completo. Ele
+depende das tabelas e funcoes dos arquivos-base supabase.sql e admin.sql,
+que nao estao incluidos nesta pasta.
 
-PASSO 2 — CRIAR O SUPABASE
-1. Entre em https://supabase.com e crie um projeto.
-2. Abra SQL Editor > New query.
-3. Abra o arquivo supabase.sql, copie tudo e cole no SQL Editor.
-4. Execute. Se aparecer erro, pare e envie a mensagem para correção.
+Se o banco ja foi configurado e o app esta funcionando, nao e necessario
+recriar as tabelas. Para preparar um projeto Supabase novo, recupere primeiro
+os arquivos-base corretos; nao execute este complemento isoladamente.
 
-PASSO 3 — CONFIGURAR A CONEXÃO
-1. No Supabase, abra Project Settings > API (ou Connect, dependendo da interface).
-2. Copie a Project URL.
-3. Copie a chave publicável (publishable/anon). NÃO copie service_role/secret.
-4. Abra config.js no Acode e substitua:
-   COLE_AQUI_A_URL_DO_PROJETO
-   CHAVE PUBLICA eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpua2RqYm54YnBxamVheXd3bnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwNzk3MjIsImV4cCI6MjEwNzY1NTcyMn0.RGOoSwcQVNCaOSM2ZvGD4L_umGZZPvJ6AU6AlAbIs1E
-5. Salve.
+CONFIGURACAO DO SUPABASE
+------------------------
+1. Em config.js, configure a URL do projeto e a chave publica (publishable/anon).
+2. Nunca coloque uma chave service_role ou secret no codigo publicado.
+3. No Supabase, cadastre o usuario administrador e autorize-o na tabela
+   administradores, conforme o esquema-base do projeto.
+4. Execute COMPLEMENTO_SUPABASE.sql somente depois dos arquivos-base.
+5. Para atualizar um banco existente com o cadastro completo de jogadores,
+   execute MIGRACAO_CRUD_JOGADORES.sql depois do complemento.
 
-PASSO 4 — CADASTRAR SÓCIOS E LINKS
-A geração de links individuais e códigos ainda precisa ser feita por uma rotina administrativa segura. Não invente tokens manualmente nem compartilhe links entre sócios. Antes de colocar o app em uso real, precisamos criar a tela administrativa que gera tokens fortes e códigos de ativação, cadastra sócios, publica jogos, registra presença real e permite reabrir jogos.
+CRIAR E COMPARTILHAR O LINK DE UM JOGADOR
+-----------------------------------------
+1. Abra Administrador e entre com o usuario autorizado no Supabase.
+2. Em "Cadastrar jogador", informe o nome e crie o cadastro.
+3. O painel gera o link individual e ativa o acesso automaticamente.
+4. Copie e envie somente o link ao jogador. Nao e necessario enviar codigo
+   de ativacao.
 
-PASSO 5 — PUBLICAR
-Para instalar como aplicativo, publique os arquivos em um endereço HTTPS, por exemplo GitHub Pages. PWA e service worker não funcionam corretamente abrindo o arquivo direto como file://.
-Depois de publicar, cada sócio receberá o próprio link, por exemplo:
-https://SEU-USUARIO.github.io/SEU-REPOSITORIO/?socio=TOKEN_INDIVIDUAL
-O exemplo acima é ilustrativo; não use o mesmo token para todos.
+O link e individual: quem o possuir pode acessar a area daquele jogador.
+Envie-o diretamente ao destinatario e evite publica-lo em grupos.
+Se o painel informar que nao conseguiu ativar o link, nao o compartilhe;
+verifique as funcoes e permissoes do banco.
 
-LIMITES DESTA VERSÃO
-- Capacidade inicial configurada em 18 pessoas no total (14 linha + 2 goleiros + 2 reservas).
-- O banco de dados bloqueia confirmação e convite quando o jogo está fechado ou chega a 18 participantes.
-- Esta versão não monta automaticamente os dois times nem inclui a área administrativa completa.
-- A ativação por código está preparada na interface e SQL, mas o fluxo de criação e entrega dos códigos depende da futura tela administrativa.
-- A instalação PWA não autentica a pessoa por hardware. Link individual é um segredo: quem o recebe pode tentar usá-lo; por isso não o encaminhe em grupos.
-- Antes de usar com todos, recomendo testar com 2 sócios fictícios e um jogo de teste.
+USO
+---
+- A tela inicial publica a lista de jogadores, inclusive quem ainda nao
+  respondeu e quem informou que nao vai jogar. Os nomes exibidos vem do banco;
+  os nomes e cadastros internos nao precisam ser renomeados.
+- O jogador abre o proprio link para confirmar ou recusar presenca e, quando
+  permitido, cadastrar um convidado.
+- O administrador pode cadastrar jogadores, criar/atualizar um jogo e fechar
+  ou reabrir as confirmacoes.
+- No cadastro de jogadores, telefone, posicao e nivel sao obrigatorios.
+  Os niveis aceitos sao 1, 2 e 3; as posicoes sao Atacante, Zagueiro, Central
+  e Goleiro. Cadastros antigos podem ser completados pela edicao.
+- A desativacao do jogador preserva o historico e revoga o link atual.
+  Ao reativar, o painel gera um link individual novo.
+- A capacidade exibida no app e de 18 pessoas.
 
-PRÓXIMA ETAPA RECOMENDADA
-Implementar a área administrativa segura com login de administrador, cadastro de sócios, geração de links e códigos, criação automática das próximas sextas, regras editáveis, lista de presença real e divisão dos times.
+PUBLICACAO
+----------
+Para uso pela turma, publique os arquivos em um endereco HTTPS. O app tambem
+pode ser testado localmente pelo XAMPP. Nao abra os arquivos diretamente por
+file://; chamadas ao Supabase e recursos de instalacao podem nao funcionar.
+
+INSTALAR NO CHROME
+------------------
+1. Abra o site publicado em HTTPS no Chrome.
+2. Toque/clique em "Instalar app" no cabecalho e confirme a instalacao.
+3. Se o Chrome nao abrir a confirmacao, abra o menu ⋮ e escolha "Instalar app"
+   ou "Adicionar a tela inicial", caso essa opcao apareca.
+
+O service worker e registrado pelo app para habilitar a instalacao e armazenar
+os arquivos principais em cache. A consulta e as alteracoes no Supabase ainda
+precisam de conexao com a internet.
+
+Antes de divulgar, teste com um jogo e cadastros de teste, incluindo o fluxo de
+criar jogador, abrir o link individual, confirmar presenca e cadastrar convidado.

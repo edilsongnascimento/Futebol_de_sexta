@@ -120,3 +120,4 @@ revoke all on function public.admin_definir_jogo_fechado(uuid, boolean) from pub
 grant execute on function public.admin_criar_socio(text) to authenticated;
 grant execute on function public.admin_criar_jogo(date, time) to authenticated;
 grant execute on function public.admin_definir_jogo_fechado(uuid, boolean) to authenticated;
+grant execute on function public.ativar_socio(text, text) to authenticated;

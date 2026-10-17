@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#176b45">
-  <title>Área do sócio · Futebol de Sexta</title>
+  <title>Área do jogador · Futebol de Sexta</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
@@ -13,20 +13,19 @@
   <header class="topbar">
     <a class="brand" href="./">
       <span class="brand-icon">⚽</span>
-      <span><strong>Futebol de Sexta</strong><small>Área do sócio</small></span>
+      <span><strong>Futebol de Sexta</strong><small>Área do jogador</small></span>
     </a>
-    <a class="btn btn-light" href="./">Início</a>
+    <nav class="header-actions" aria-label="Navegação do jogador">
+      <button class="btn btn-light install-app-btn" type="button">Instalar app</button>
+      <a class="btn btn-light" href="./">Início</a>
+    </nav>
   </header>
+  <p id="installMessage" class="install-message" role="status" aria-live="polite" hidden></p>
   <main class="container">
     <section class="card">
       <div class="status-line"><span class="eyebrow">ACESSO AO GRUPO</span><span id="connectionStatus" class="status">Verificando...</span></div>
       <h1 id="identityText">Bem-vindo!</h1>
       <p id="identityHint" class="muted">Abra seu link individual para acessar sua participação.</p>
-      <div id="activationBox" class="activation-box hidden">
-        <label for="activationCode">Código de ativação</label>
-        <input id="activationCode" autocomplete="one-time-code" placeholder="Digite o código recebido">
-        <button id="activateBtn" class="btn btn-primary btn-block" type="button">Ativar meu acesso</button>
-      </div>
     </section>
 
     <section class="card">
@@ -48,7 +47,7 @@
       </div>
       <div id="guestArea" class="guest-area hidden">
         <h3>Levar um convidado</h3>
-        <p class="muted">Um convidado por sócio, conforme disponibilidade de vagas.</p>
+        <p class="muted">Um convidado por jogador, conforme disponibilidade de vagas.</p>
         <label for="guestName">Nome do convidado</label>
         <input id="guestName" maxlength="100" placeholder="Nome completo">
         <button id="guestBtn" class="btn btn-primary btn-block" type="button">Cadastrar convidado</button>
@@ -61,6 +60,7 @@
     </section>
     <footer><a href="./">Voltar à tela inicial</a></footer>
   </main>
+  <script src="install.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="socio.js"></script>
