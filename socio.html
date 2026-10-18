@@ -17,6 +17,7 @@
     </a>
     <nav class="header-actions" aria-label="Navegação do jogador">
       <button class="btn btn-light install-app-btn" type="button">Instalar app</button>
+      <button id="playerLogoutBtn" class="btn btn-light hidden" type="button">Sair</button>
       <a class="btn btn-light" href="./">Início</a>
     </nav>
   </header>
@@ -26,6 +27,10 @@
       <div class="status-line"><span class="eyebrow">ACESSO AO GRUPO</span><span id="connectionStatus" class="status">Verificando...</span></div>
       <h1 id="identityText">Bem-vindo!</h1>
       <p id="identityHint" class="muted">Abra seu link individual para acessar sua participação.</p>
+      <div id="pushSettings" class="push-settings hidden">
+        <button id="pushNotificationsBtn" class="btn btn-secondary" type="button">Ativar notificações neste celular</button>
+        <p id="pushMessage" class="message" role="status" aria-live="polite"></p>
+      </div>
     </section>
 
     <section class="card">

@@ -75,8 +75,8 @@ hr{margin:24px 0;border:0;border-top:1px solid var(--border)}
 footer{padding:8px 0 20px;color:var(--muted);font-size:12px;text-align:center}
 .hidden{display:none!important}
 @media(max-width:420px){
-  .topbar{padding:14px 12px    .member-toolbar{grid-template-columns:1fr}
-  }
+  .topbar{padding:14px 12px}
+  .member-toolbar{grid-template-columns:1fr}
   .brand strong{font-size:17px}
   .container{width:calc(100% - 16px);margin-top:12px}
   .card{padding:16px;border-radius:13px}
@@ -129,6 +129,8 @@ footer{padding:8px 0 20px;color:var(--muted);font-size:12px;text-align:center}
   font-size: 12px;
 }
 .install-message{width:min(100% - 24px,720px);margin:8px auto 0;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:13px}
+.push-settings{margin-top:12px}
+.push-settings .message{margin-top:6px}
 
 /* Menos espaço entre os cartões */
 .container {

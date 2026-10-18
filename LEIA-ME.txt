@@ -12,6 +12,8 @@ ARQUIVOS
 - config.js: URL e chave publica do Supabase.
 - COMPLEMENTO_SUPABASE.sql: funcoes e permissoes complementares do banco.
 - MIGRACAO_CRUD_JOGADORES.sql: campos e funcoes para o CRUD administrativo.
+- MIGRACAO_LINKS_JOGADORES.sql: RPC para emitir um link individual substituto.
+- MIGRACAO_NOTIFICACOES_PUSH.sql: assinaturas e registro de notificacoes push.
 - manifest.json, install.js, sw.js: instalacao e recursos da PWA.
 - icon.svg, icon-192.png, icon-512.png: icones do app.
 
@@ -34,6 +36,8 @@ CONFIGURACAO DO SUPABASE
 4. Execute COMPLEMENTO_SUPABASE.sql somente depois dos arquivos-base.
 5. Para atualizar um banco existente com o cadastro completo de jogadores,
    execute MIGRACAO_CRUD_JOGADORES.sql depois do complemento.
+6. Para permitir que o administrador gere novamente o link de um jogador,
+   execute MIGRACAO_LINKS_JOGADORES.sql depois da migracao do CRUD.
 
 CRIAR E COMPARTILHAR O LINK DE UM JOGADOR
 -----------------------------------------
@@ -47,6 +51,13 @@ O link e individual: quem o possuir pode acessar a area daquele jogador.
 Envie-o diretamente ao destinatario e evite publica-lo em grupos.
 Se o painel informar que nao conseguiu ativar o link, nao o compartilhe;
 verifique as funcoes e permissoes do banco.
+
+Depois de abrir o link individual, o jogador permanece conectado neste perfil
+do navegador. O token fica guardado no armazenamento local e o icone do app
+instalado abre diretamente a area do jogador, recuperando esse acesso. O acesso
+continua ativo ate usar "Sair", limpar os dados do navegador ou o administrador
+revogar/gerar outro link. Em dispositivos compartilhados, encerre a sessao ao
+terminar. Na lista administrativa, "Gerar novo link" revoga o link anterior.
 
 USO
 ---
@@ -73,9 +84,65 @@ file://; chamadas ao Supabase e recursos de instalacao podem nao funcionar.
 INSTALAR NO CHROME
 ------------------
 1. Abra o site publicado em HTTPS no Chrome.
-2. Toque/clique em "Instalar app" no cabecalho e confirme a instalacao.
-3. Se o Chrome nao abrir a confirmacao, abra o menu ⋮ e escolha "Instalar app"
+2. Abra seu link individual primeiro para salvar o acesso neste perfil do
+   navegador.
+3. Toque/clique em "Instalar app" no cabecalho e confirme a instalacao.
+4. Se o Chrome nao abrir a confirmacao, abra o menu ⋮ e escolha "Instalar app"
    ou "Adicionar a tela inicial", caso essa opcao apareca.
+
+Ao abrir pelo icone, o app vai para a area do jogador e reutiliza o acesso salvo
+no mesmo perfil do navegador. Nao limpe os dados do site nem use o modo anonimo;
+em outro aparelho ou perfil, abra novamente o link individual.
+
+NOTIFICACOES PUSH
+-----------------
+O jogador precisa abrir a area individual, tocar em "Ativar notificacoes neste
+celular" e permitir notificacoes. A inscricao vale para aquele perfil e aparelho;
+para receber em outro dispositivo, ative novamente nele. O jogador pode usar o
+mesmo botao para desativar as notificacoes.
+
+Os avisos cobrem novo jogo, abertura/reabertura e fechamento das confirmacoes,
+lotacao e lembrete aproximadamente seis horas antes do jogo. O lembrete nao
+altera o estado do jogo: vagas continuam disponiveis para convidados somente
+enquanto o jogo estiver aberto e ainda houver capacidade.
+
+Para habilitar o envio no Supabase:
+1. Execute MIGRACAO_NOTIFICACOES_PUSH.sql no SQL Editor do projeto, depois dos
+   SQLs-base.
+2. Gere um par de chaves VAPID com `npx web-push generate-vapid-keys`.
+3. Copie a chave publica para SUPABASE_VAPID_PUBLIC_KEY em config.js. A chave
+   publica pode ficar no app; nunca publique a chave privada.
+4. Instale e autentique o Supabase CLI, vincule esta pasta ao projeto e salve
+   os segredos no projeto:
+
+   `supabase secrets set SUPABASE_SERVICE_ROLE_KEY="..." VAPID_PUBLIC_KEY="..." VAPID_PRIVATE_KEY="..." VAPID_SUBJECT="mailto:seu-email@exemplo.com" PUSH_CRON_SECRET="..." APP_TIMEZONE="America/Sao_Paulo"`
+
+   Use a chave service_role somente como segredo do servidor. Gere PUSH_CRON_SECRET
+   aleatoriamente e nao o coloque no codigo do app.
+5. Publique a funcao:
+
+   `supabase functions deploy notificar-push`
+
+6. No SQL Editor, habilite as extensoes pg_cron, pg_net e Vault se ainda nao
+   estiverem habilitadas. Guarde a URL do projeto e o mesmo PUSH_CRON_SECRET
+   configurado na Edge Function no Vault. Depois agende a chamada abaixo,
+   substituindo <projeto> pela referencia do projeto:
+
+   `select vault.create_secret('https://<projeto>.supabase.co', 'push_project_url');`
+
+   `select vault.create_secret('<PUSH_CRON_SECRET>', 'push_cron_secret');`
+
+   `select cron.schedule('futebol-sexta-lembrete-push', '*/5 * * * *', $$ select net.http_post(url := (select decrypted_secret from vault.decrypted_secrets where name = 'push_project_url') || '/functions/v1/notificar-push', headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'push_cron_secret')), body := '{"eventType":"cron_lembretes"}'::jsonb); $$);`
+
+   Nao coloque o segredo diretamente no comando agendado. A funcao verifica se
+   chegou a janela de seis horas e envia no maximo um lembrete por jogo.
+7. Publique os arquivos atualizados em HTTPS. No iPhone, use iOS 16.4 ou
+   posterior e adicione o app a Tela de Inicio. Para
+   testar, abra o link individual, ative as notificacoes e use um jogo de teste.
+   O navegador precisa permitir notificacoes; para o lembrete automatico, o cron
+   tambem precisa estar ativo.
+   ative as notificacoes e use um jogo de teste. O navegador precisa permitir
+   notificacoes; para o lembrete automatico, o cron tambem precisa estar ativo.
 
 O service worker e registrado pelo app para habilitar a instalacao e armazenar
 os arquivos principais em cache. A consulta e as alteracoes no Supabase ainda

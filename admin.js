@@ -11,6 +11,27 @@
   };
   const esc = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
+  async function notifyPush(eventType, gameId) {
+    const {data,error}=await db.functions.invoke("notificar-push",{
+      body:{
+        eventType,
+        gameId,
+        eventKey:`${eventType}:${gameId}:${Date.now()}`
+      }
+    });
+    if(error) throw error;
+    if(data?.error) throw new Error(data.error);
+    return data;
+  }
+
+  function pushSummary(result) {
+    if(result.duplicate) return "Este aviso já havia sido processado.";
+    const sent=Number(result.enviados || 0);
+    const failed=Number(result.falhas || 0);
+    if(!sent) return "Nenhum aparelho com notificações ativas recebeu o aviso.";
+    return `${sent} aparelho(s) notificado(s)${failed ? `; ${failed} falha(s) de entrega` : ""}.`;
+  }
+
   async function loadCurrentGame() {
     const {data,error}=await db.rpc("obter_painel_publico");
     if(error) throw error;
@@ -99,6 +120,7 @@
         </div>
         <div class="member-actions">
           <button class="btn btn-secondary" type="button" data-member-action="edit" data-member-id="${esc(member.id)}">Editar</button>
+          ${member.ativo ? `<button class="btn btn-secondary" type="button" data-member-action="link" data-member-id="${esc(member.id)}">Gerar novo link</button>` : ""}
           <button class="btn btn-secondary" type="button" data-member-action="toggle" data-member-id="${esc(member.id)}">${member.ativo ? "Desativar e revogar link" : "Reativar e gerar novo link"}</button>
         </div>
       </article>`).join("");
@@ -226,12 +248,29 @@
     }
   }
 
+  async function regenerateMemberLink(id) {
+    const member=members.find(row=>row.id===id);
+    if(!member) return say("adminActionMessage","Jogador não encontrado na lista. Atualize os dados.",true);
+    if(!member.ativo) return say("adminActionMessage","Reative o jogador para gerar um novo link.",true);
+    if(!window.confirm(`Gerar um novo link para ${member.nome}? O link anterior deixará de funcionar imediatamente.`)) return;
+    say("adminActionMessage","Gerando novo link individual...");
+    try {
+      const {data,error}=await db.rpc("admin_gerar_link_jogador",{p_socio_id:id});
+      if(error) throw error;
+      if(data?.erro) throw new Error(data.erro);
+      if(!data?.token) throw new Error("O banco não retornou o novo link individual.");
+      showMemberLink(member,data.token);
+      say("adminActionMessage","Novo link gerado. O link anterior foi revogado; envie este link ao jogador.");
+    } catch(e) { console.error(e); say("adminActionMessage",e.message || "Não foi possível gerar um novo link.",true); }
+  }
+
   async function handleMemberListClick(event) {
     const button=event.target.closest("[data-member-action]");
     if(!button) return;
     const id=button.dataset.memberId;
     if(button.dataset.memberAction==="edit") editMember(id);
     if(button.dataset.memberAction==="toggle") await toggleMember(id);
+    if(button.dataset.memberAction==="link") await regenerateMemberLink(id);
   }
 
   async function createGame() {
@@ -242,8 +281,20 @@
       const {data,error}=await db.rpc("admin_criar_jogo",{p_data:date,p_hora:time});
       if(error) throw error;
       if(data?.erro) throw new Error(data.erro);
-      say("adminActionMessage",`Jogo salvo para ${date}, às ${time}.`);
+      let gameId=data?.id;
       await loadCurrentGame();
+      if(!gameId && currentGame?.data_jogo===date) gameId=currentGame.id;
+      if(gameId) {
+        try {
+          const result=await notifyPush("novo_jogo",gameId);
+          say("adminActionMessage",`Jogo salvo para ${date}, às ${time}. ${pushSummary(result)}`);
+        } catch(notificationError) {
+          console.error("O jogo foi salvo, mas não foi possível enviar a notificação.",notificationError);
+          say("adminActionMessage",`Jogo salvo para ${date}, às ${time}, mas a notificação falhou: ${notificationError.message || "erro desconhecido."}`,true);
+        }
+      } else {
+        say("adminActionMessage",`Jogo salvo para ${date}, às ${time}, mas não foi possível identificar o jogo para notificar.`,true);
+      }
     } catch(e) { say("adminActionMessage",e.message || "Não foi possível salvar o jogo.",true); }
     finally { $("createGameBtn").disabled=false; }
   }
@@ -252,12 +303,19 @@
     if(!currentGame?.id) return say("adminActionMessage","Não existe jogo para alterar.",true);
     $("toggleGameBtn").disabled=true;
     try {
+      const gameId=currentGame.id;
       const nextClosed=!currentGame.fechado;
-      const {data,error}=await db.rpc("admin_definir_jogo_fechado",{p_jogo_id:currentGame.id,p_fechado:nextClosed});
+      const {data,error}=await db.rpc("admin_definir_jogo_fechado",{p_jogo_id:gameId,p_fechado:nextClosed});
       if(error) throw error;
       if(data?.erro) throw new Error(data.erro);
-      say("adminActionMessage",nextClosed ? "Confirmações fechadas." : "Confirmações reabertas.");
       await loadCurrentGame();
+      try {
+        const result=await notifyPush(nextClosed ? "confirmacoes_fechadas" : "confirmacoes_abertas",gameId);
+        say("adminActionMessage",`${nextClosed ? "Confirmações fechadas." : "Confirmações reabertas."} ${pushSummary(result)}`);
+      } catch(notificationError) {
+        console.error("O estado do jogo foi atualizado, mas não foi possível enviar a notificação.",notificationError);
+        say("adminActionMessage",`${nextClosed ? "Confirmações fechadas" : "Confirmações reabertas"}, mas a notificação falhou: ${notificationError.message || "erro desconhecido."}`,true);
+      }
     } catch(e) { say("adminActionMessage",e.message || "Não foi possível alterar o jogo.",true); }
     finally { $("toggleGameBtn").disabled=false; }
   }
