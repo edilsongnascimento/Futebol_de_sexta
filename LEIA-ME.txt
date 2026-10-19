@@ -12,6 +12,7 @@ ARQUIVOS
 - config.js: URL e chave publica do Supabase.
 - COMPLEMENTO_SUPABASE.sql: funcoes e permissoes complementares do banco.
 - MIGRACAO_CRUD_JOGADORES.sql: campos e funcoes para o CRUD administrativo.
+- MIGRACAO_EXCLUIR_JOGADORES.sql: funcao administrativa de exclusao permanente.
 - MIGRACAO_LINKS_JOGADORES.sql: RPC para emitir um link individual substituto.
 - MIGRACAO_NOTIFICACOES_PUSH.sql: assinaturas e registro de notificacoes push.
 - manifest.json, install.js, sw.js: instalacao e recursos da PWA.
@@ -38,6 +39,8 @@ CONFIGURACAO DO SUPABASE
    execute MIGRACAO_CRUD_JOGADORES.sql depois do complemento.
 6. Para permitir que o administrador gere novamente o link de um jogador,
    execute MIGRACAO_LINKS_JOGADORES.sql depois da migracao do CRUD.
+7. Para habilitar a exclusao permanente de jogadores pelo painel, execute
+   MIGRACAO_EXCLUIR_JOGADORES.sql depois da migracao de notificacoes push.
 
 CRIAR E COMPARTILHAR O LINK DE UM JOGADOR
 -----------------------------------------
@@ -71,6 +74,9 @@ USO
 - No cadastro de jogadores, telefone, posicao e nivel sao obrigatorios.
   Os niveis aceitos sao 1, 2 e 3; as posicoes sao Atacante, Zagueiro, Central
   e Goleiro. Cadastros antigos podem ser completados pela edicao.
+- "Excluir permanentemente" apaga o cadastro, confirmacoes, convidados e
+  inscricoes push do jogador. A acao nao pode ser desfeita; para preservar o
+  historico, use "Desativar e revogar link".
 - A desativacao do jogador preserva o historico e revoga o link atual.
   Ao reativar, o painel gera um link individual novo.
 - A capacidade exibida no app e de 18 pessoas.
@@ -137,12 +143,9 @@ Para habilitar o envio no Supabase:
    Nao coloque o segredo diretamente no comando agendado. A funcao verifica se
    chegou a janela de seis horas e envia no maximo um lembrete por jogo.
 7. Publique os arquivos atualizados em HTTPS. No iPhone, use iOS 16.4 ou
-   posterior e adicione o app a Tela de Inicio. Para
-   testar, abra o link individual, ative as notificacoes e use um jogo de teste.
-   O navegador precisa permitir notificacoes; para o lembrete automatico, o cron
-   tambem precisa estar ativo.
-   ative as notificacoes e use um jogo de teste. O navegador precisa permitir
-   notificacoes; para o lembrete automatico, o cron tambem precisa estar ativo.
+   posterior e adicione o app a Tela de Inicio. Para testar, abra o link
+   individual e ative as notificacoes. O navegador precisa permitir notificacoes;
+   para o lembrete automatico, o cron tambem precisa estar ativo.
 
 O service worker e registrado pelo app para habilitar a instalacao e armazenar
 os arquivos principais em cache. A consulta e as alteracoes no Supabase ainda

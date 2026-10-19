@@ -37,6 +37,8 @@ a{color:var(--green-dark)}
 .btn-primary{background:var(--green);color:#fff}
 .btn-primary:hover{background:var(--green-dark)}
 .btn-secondary{border-color:var(--border);background:#f7f9f7;color:var(--text)}
+.btn-danger{border-color:#e5b8af;background:#fff0ed;color:#963b2c}
+.btn-danger:hover{background:#fbded7}
 .btn-light{background:#fff;color:var(--green-dark)}
 .btn-block{width:100%}
 .btn-small{min-height:36px;padding:7px 11px;font-size:13px}
@@ -211,6 +213,36 @@ footer{padding:8px 0 20px;color:var(--muted);font-size:12px;text-align:center}
   border-top: 1px solid var(--border);
 }
 
+.people-group {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border: 1px solid #c9e4d2;
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: var(--green-light);
+}
+
+.people-group h3 {
+  margin: 0 0 5px;
+}
+
+.people-group-confirmed {
+  border-left-color: var(--green);
+}
+
+.people-group-pending {
+  border-left-color: #b7791f;
+}
+
+.people-group-declined {
+  border-left-color: var(--danger);
+}
+
+.people-group .person:first-child {
+  padding-top: 5px;
+}
+
 .people-list {
   min-height: 0;
 }
@@ -234,11 +266,14 @@ footer{padding:8px 0 20px;color:var(--muted);font-size:12px;text-align:center}
   font-size: 11px;
 }
 
-/* Retira fundos vermelhos decorativos,
-   sem esconder mensagens de erro */
+.status-open {
+  background: var(--green-light);
+  color: var(--green-dark);
+}
+
 .status-closed {
-  background: #f0f2f0;
-  color: #505b53;
+  background: #fff0ed;
+  color: #963b2c;
 }
 
 .notice {

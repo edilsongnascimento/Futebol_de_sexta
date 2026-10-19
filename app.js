@@ -59,13 +59,14 @@
       : "O administrador ainda não publicou o próximo jogo.";
     const closed = !game || Boolean(game.fechado) || count >= CAPACITY;
     $("gameStatus").textContent = !game ? "Aguardando jogo" : closed ? "Confirmações fechadas" : "Confirmações abertas";
-    $("gameStatus").classList.toggle("status-closed", closed);
+    $("gameStatus").classList.toggle("status-open", Boolean(game) && !closed);
+    $("gameStatus").classList.toggle("status-closed", Boolean(game) && closed);
     $("countLabel").textContent = `${count} / ${CAPACITY}`;
     $("progressBar").style.width = `${Math.min(100, count / CAPACITY * 100)}%`;
 
     const combinedConfirmed = confirmed.map(p => ({...p, situacao_label:"Confirmado"}));
     renderPeople("confirmedList", combinedConfirmed, "Ninguém confirmou presença ainda.");
-    renderPeople("pendingList", pending.map(p => ({...p, situacao_label:"Não respondeu"})), "Todos os jogadores já responderam.");
+    renderPeople("pendingList", pending.map(p => ({...p, situacao_label:"Ainda não confirmou"})), "Todos os jogadores já responderam.");
     renderPeople("declinedList", declined.map(p => ({...p, situacao_label:"Não vai"})), "Nenhum jogador informou que não vai.");
     if (!game) showError("Ainda não existe um jogo futuro cadastrado.");
   }

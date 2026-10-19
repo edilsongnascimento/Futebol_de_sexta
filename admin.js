@@ -122,6 +122,7 @@
           <button class="btn btn-secondary" type="button" data-member-action="edit" data-member-id="${esc(member.id)}">Editar</button>
           ${member.ativo ? `<button class="btn btn-secondary" type="button" data-member-action="link" data-member-id="${esc(member.id)}">Gerar novo link</button>` : ""}
           <button class="btn btn-secondary" type="button" data-member-action="toggle" data-member-id="${esc(member.id)}">${member.ativo ? "Desativar e revogar link" : "Reativar e gerar novo link"}</button>
+          <button class="btn btn-danger" type="button" data-member-action="delete" data-member-id="${esc(member.id)}">Excluir permanentemente</button>
         </div>
       </article>`).join("");
   }
@@ -248,6 +249,30 @@
     }
   }
 
+  async function deleteMember(id) {
+    const member=members.find(row=>row.id===id);
+    if(!member) return say("adminActionMessage","Jogador não encontrado na lista. Atualize os dados.",true);
+    const confirmed=window.confirm(
+      `Excluir permanentemente ${member.nome}?\n\nEsta ação apagará o cadastro, confirmações, convidados e o histórico associado. Não pode ser desfeita.`
+    );
+    if(!confirmed) return;
+    say("adminActionMessage",`Excluindo ${member.nome} e o histórico associado...`);
+    try {
+      const {data,error}=await db.rpc("admin_excluir_jogador",{p_socio_id:id});
+      if(error) throw error;
+      if(data?.erro) throw new Error(data.erro);
+      if(data?.excluido!==true) throw new Error("O banco não confirmou a exclusão do jogador.");
+      if($("memberId").value===id) resetMemberForm();
+      $("newMemberResult").classList.add("hidden");
+      $("newMemberResult").innerHTML="";
+      await loadMembers();
+      say("adminActionMessage",`${member.nome} e o histórico associado foram excluídos permanentemente.`);
+    } catch(error) {
+      console.error("Não foi possível excluir o jogador.",error);
+      say("adminActionMessage",error.message || "Não foi possível excluir o jogador.",true);
+    }
+  }
+
   async function regenerateMemberLink(id) {
     const member=members.find(row=>row.id===id);
     if(!member) return say("adminActionMessage","Jogador não encontrado na lista. Atualize os dados.",true);
@@ -271,6 +296,7 @@
     if(button.dataset.memberAction==="edit") editMember(id);
     if(button.dataset.memberAction==="toggle") await toggleMember(id);
     if(button.dataset.memberAction==="link") await regenerateMemberLink(id);
+    if(button.dataset.memberAction==="delete") await deleteMember(id);
   }
 
   async function createGame() {

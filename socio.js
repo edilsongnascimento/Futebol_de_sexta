@@ -181,6 +181,8 @@
     $("progressBar").style.width = `${Math.min(100,occupied/CAPACITY*100)}%`;
     const closed = !game || Boolean(game.fechado) || occupied >= CAPACITY;
     $("gameStatus").textContent = !game ? "Aguardando jogo" : closed ? "Fechado" : "Aberto";
+    $("gameStatus").classList.toggle("status-open", Boolean(game) && !closed);
+    $("gameStatus").classList.toggle("status-closed", Boolean(game) && closed);
     $("closedNotice").classList.toggle("hidden", !closed);
     $("confirmationArea").classList.toggle("hidden", !member || !game || closed);
     $("guestArea").classList.toggle("hidden", !member || !game || closed);

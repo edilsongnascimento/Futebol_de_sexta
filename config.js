@@ -6,5 +6,5 @@
 window.FUTEBOL_CONFIG = {
   SUPABASE_URL: "https://znkdjbnxbpqjeaywwnpn.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_lWnja6_LMS9vrnq0BtJ_qw_djzffZQq",
-  SUPABASE_VAPID_PUBLIC_KEY: ""
+  SUPABASE_VAPID_PUBLIC_KEY: "BFstHRKmN9gimBmnHyP8ovKELYb09kcXhqTmE5SwWECWJt4LvcEO5dZEg6DDdd9rnVKbTILiGQ_oOM8RURsPijU"
 };
