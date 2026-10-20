@@ -146,7 +146,7 @@
           const isGuest = player.tipo === "convidado";
           const detail = isGuest
             ? `Convidado de ${escapeHTML(player.convidado_por || "jogador")}`
-            : `${escapeHTML(player.posicao || "Posição pendente")} · Nível ${escapeHTML(player.nivel ?? "—")}`;
+            : escapeHTML(player.posicao || "Posição pendente");
           return `<div class="person">
             <div class="avatar">${escapeHTML((player.nome || "?").trim().slice(0,1).toUpperCase())}</div>
             <div class="person-info">

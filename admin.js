@@ -297,7 +297,7 @@
     const member=members.find(row=>row.id===id);
     if(!member) return say("adminActionMessage","Jogador não encontrado na lista. Atualize os dados.",true);
     const confirmed=window.confirm(
-      `Excluir permanentemente ${member.nome}?\n\nEsta ação apagará o cadastro, confirmações, convidados e o histórico associado. Não pode ser desfeita.`
+      `Excluir ${member.nome}?\n\nEsta ação apagará o cadastro, confirmações, convidados e o histórico associado. Não pode ser desfeita.`
     );
     if(!confirmed) return;
     say("adminActionMessage",`Excluindo ${member.nome} e o histórico associado...`);
