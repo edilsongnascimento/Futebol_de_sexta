@@ -22,7 +22,7 @@ $$;
 revoke all on function public.admin_verificar_acesso() from public, anon;
 grant execute on function public.admin_verificar_acesso() to authenticated;
 
--- Painel público: retorna apenas o próximo jogo e nomes/situação dos sócios ativos.
+-- Painel público: retorna nomes, posições e níveis para exibir os times.
 -- Não expõe tokens, códigos de ativação, e-mails ou identificadores privados.
 create or replace function public.obter_painel_publico()
 returns jsonb
@@ -56,12 +56,14 @@ begin
   select coalesce(jsonb_agg(row_to_json(x)::jsonb order by x.nome), '[]'::jsonb)
   into v_confirmados
   from (
-    select s.nome, 'socio'::text as tipo, null::text as convidado_por
+    select s.nome, 'socio'::text as tipo, null::text as convidado_por,
+      s.posicao, s.nivel
     from public.confirmacoes c
     join public.socios s on s.id = c.socio_id
     where c.jogo_id = v_jogo.id and c.confirmou = true and s.ativo = true
     union all
-    select g.nome, 'convidado'::text as tipo, s.nome as convidado_por
+    select g.nome, 'convidado'::text as tipo, s.nome as convidado_por,
+      null::text as posicao, null::integer as nivel
     from public.convidados g
     join public.socios s on s.id = g.socio_id
     where g.jogo_id = v_jogo.id and s.ativo = true

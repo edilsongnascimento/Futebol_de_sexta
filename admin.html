@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#176b45">
-  <title>Administração · Futebol de Sexta</title>
+  <title>Área administrativa · Futebol de Sexta</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="admin-page">
   <header class="topbar">
-    <a class="brand" href="./"><span class="brand-icon">⚽</span><span><strong>Futebol de Sexta</strong><small>Administração</small></span></a>
+    <a class="brand" href="./"><span class="brand-icon">⚽</span><span><strong>Futebol de Sexta</strong></span></a>
     <nav class="header-actions" aria-label="Navegação administrativa">
       <button class="btn btn-light install-app-btn" type="button">Instalar app</button>
       <a class="btn btn-light" href="./">Tela inicial</a>
@@ -19,8 +19,7 @@
   <p id="installMessage" class="install-message" role="status" aria-live="polite" hidden></p>
   <main class="container">
     <section class="card">
-      <span class="eyebrow">ÁREA RESTRITA</span>
-      <h1>Administração</h1>
+      <h1>Área administrativa</h1>
       <p class="muted">Entre com o usuário administrador cadastrado no Supabase.</p>
       <div id="adminLoginForm">
         <label for="adminEmail">E-mail</label>
@@ -31,7 +30,6 @@
       </div>
       <p id="adminMessage" class="message" aria-live="polite"></p>
       <div id="adminContent" class="hidden">
-        <div class="status-line"><h2>Painel administrativo</h2></div>
         <hr>
         <h3>Jogadores</h3>
         <p class="muted">Cadastre, atualize e controle os acessos individuais dos jogadores.</p>
@@ -46,6 +44,12 @@
           </select>
         </div>
         <div id="memberList" class="member-list" aria-live="polite">
+          <p class="muted">Carregando jogadores...</p>
+        </div>
+        <hr>
+        <h3>Confirmações do próximo jogo</h3>
+        <p id="attendanceGameInfo" class="muted">Carregando confirmações...</p>
+        <div id="attendanceList" class="attendance-list" aria-live="polite">
           <p class="muted">Carregando jogadores...</p>
         </div>
         <hr>

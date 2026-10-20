@@ -38,6 +38,127 @@
     }).join("");
   }
 
+  function teamBalanceScore(teams) {
+    const differences = (key, combine = false) => {
+      const counts = teams.map(team => {
+        const result = new Map();
+        team.forEach(player => {
+          const value = combine
+            ? `${player.posicao || ""}|${player.nivel ?? ""}`
+            : player[key];
+          if (value !== null && value !== undefined && value !== "") {
+            result.set(value, (result.get(value) || 0) + 1);
+          }
+        });
+        return result;
+      });
+      const categories = new Set([...counts[0].keys(), ...counts[1].keys()]);
+      return [...categories].reduce((score, category) =>
+        score + ((counts[0].get(category) || 0) - (counts[1].get(category) || 0)) ** 2, 0);
+    };
+    const positionDifference = differences("posicao");
+    const levelDifference = differences("nivel");
+    return [
+      Math.abs(teams[0].length - teams[1].length),
+      positionDifference + levelDifference,
+      Math.max(positionDifference, levelDifference),
+      positionDifference,
+      levelDifference,
+      differences("", true)
+    ];
+  }
+
+  function compareTeamScores(first, second) {
+    for (let index = 0; index < first.length; index++) {
+      if (first[index] !== second[index]) return first[index] - second[index];
+    }
+    return 0;
+  }
+
+  function splitIntoTeams(players) {
+    const positionCounts = new Map();
+    const levelCounts = new Map();
+    players.forEach(player => {
+      if (player.posicao) positionCounts.set(player.posicao, (positionCounts.get(player.posicao) || 0) + 1);
+      if (player.nivel != null) levelCounts.set(String(player.nivel), (levelCounts.get(String(player.nivel)) || 0) + 1);
+    });
+    const ordered = [...players].sort((a, b) => {
+      const rarityA = (positionCounts.get(a.posicao) || 0) + (levelCounts.get(String(a.nivel ?? "")) || 0);
+      const rarityB = (positionCounts.get(b.posicao) || 0) + (levelCounts.get(String(b.nivel ?? "")) || 0);
+      return rarityA - rarityB
+        || String(a.posicao || "").localeCompare(String(b.posicao || ""), "pt-BR")
+        || Number(a.nivel || 0) - Number(b.nivel || 0)
+        || String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR");
+    });
+    const teams = [[], []];
+    if (ordered.length > 18) {
+      ordered.forEach(player => {
+        if (teams[0].length < teams[1].length) teams[0].push(player);
+        else if (teams[1].length < teams[0].length) teams[1].push(player);
+        else {
+          teams[0].push(player);
+          const scoreA = teamBalanceScore(teams);
+          teams[0].pop();
+          teams[1].push(player);
+          const scoreB = teamBalanceScore(teams);
+          teams[1].pop();
+          teams[compareTeamScores(scoreA, scoreB) <= 0 ? 0 : 1].push(player);
+        }
+      });
+      return teams;
+    }
+
+    const targetSizes = [Math.ceil(ordered.length / 2), Math.floor(ordered.length / 2)];
+    let bestTeams = null;
+    let bestScore = null;
+    function search(index) {
+      if (index === ordered.length) {
+        const score = teamBalanceScore(teams);
+        if (!bestScore || compareTeamScores(score, bestScore) < 0) {
+          bestScore = score;
+          bestTeams = teams.map(team => [...team]);
+        }
+        return;
+      }
+      const player = ordered[index];
+      teams.forEach((team, teamIndex) => {
+        if (team.length >= targetSizes[teamIndex]) return;
+        team.push(player);
+        search(index + 1);
+        team.pop();
+      });
+    }
+    search(0);
+    return bestTeams || teams;
+  }
+
+  function renderConfirmedTeams(players) {
+    const list = $("confirmedList");
+    if (!players.length) {
+      list.innerHTML = '<p class="muted">Ninguém confirmou presença ainda.</p>';
+      return;
+    }
+    const teams = splitIntoTeams(players);
+    list.innerHTML = teams.map((team, index) => `
+      <section class="team-column">
+        <h4>Time ${index === 0 ? "A" : "B"}</h4>
+        ${team.length ? team.map(player => {
+          const isGuest = player.tipo === "convidado";
+          const detail = isGuest
+            ? `Convidado de ${escapeHTML(player.convidado_por || "jogador")}`
+            : `${escapeHTML(player.posicao || "Posição pendente")} · Nível ${escapeHTML(player.nivel ?? "—")}`;
+          return `<div class="person">
+            <div class="avatar">${escapeHTML((player.nome || "?").trim().slice(0,1).toUpperCase())}</div>
+            <div class="person-info">
+              <div class="person-name">${escapeHTML(player.nome)}</div>
+              <div class="person-detail">${detail}</div>
+            </div>
+            ${isGuest ? '<span class="status guest-tag">CONVIDADO</span>' : ""}
+          </div>`;
+        }).join("") : '<p class="muted">Aguardando confirmações.</p>'}
+      </section>`).join("");
+  }
+
   function showError(message) {
     $("publicMessage").textContent = message;
     $("publicMessage").classList.add("error-text");
@@ -64,8 +185,7 @@
     $("countLabel").textContent = `${count} / ${CAPACITY}`;
     $("progressBar").style.width = `${Math.min(100, count / CAPACITY * 100)}%`;
 
-    const combinedConfirmed = confirmed.map(p => ({...p, situacao_label:"Confirmado"}));
-    renderPeople("confirmedList", combinedConfirmed, "Ninguém confirmou presença ainda.");
+    renderConfirmedTeams(confirmed);
     renderPeople("pendingList", pending.map(p => ({...p, situacao_label:"Ainda não confirmou"})), "Todos os jogadores já responderam.");
     renderPeople("declinedList", declined.map(p => ({...p, situacao_label:"Não vai"})), "Nenhum jogador informou que não vai.");
     if (!game) showError("Ainda não existe um jogo futuro cadastrado.");

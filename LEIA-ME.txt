@@ -15,6 +15,8 @@ ARQUIVOS
 - MIGRACAO_EXCLUIR_JOGADORES.sql: funcao administrativa de exclusao permanente.
 - MIGRACAO_LINKS_JOGADORES.sql: RPC para emitir um link individual substituto.
 - MIGRACAO_NOTIFICACOES_PUSH.sql: assinaturas e registro de notificacoes push.
+- MIGRACAO_CONFIRMAR_JOGADORES_ADMIN.sql: controle administrativo de presenca.
+- MIGRACAO_TIMES_CONFIRMADOS.sql: dados de posicao e nivel dos confirmados.
 - manifest.json, install.js, sw.js: instalacao e recursos da PWA.
 - icon.svg, icon-192.png, icon-512.png: icones do app.
 
@@ -41,6 +43,12 @@ CONFIGURACAO DO SUPABASE
    execute MIGRACAO_LINKS_JOGADORES.sql depois da migracao do CRUD.
 7. Para habilitar a exclusao permanente de jogadores pelo painel, execute
    MIGRACAO_EXCLUIR_JOGADORES.sql depois da migracao de notificacoes push.
+8. Para permitir que o administrador confirme ou desconfirme jogadores no
+   proximo jogo, execute MIGRACAO_CONFIRMAR_JOGADORES_ADMIN.sql depois dos
+   SQLs-base e de COMPLEMENTO_SUPABASE.sql.
+9. Para separar os confirmados em dois times equilibrados por posicao e nivel,
+   execute MIGRACAO_TIMES_CONFIRMADOS.sql depois da migracao CRUD e do
+   COMPLEMENTO_SUPABASE.sql.
 
 CRIAR E COMPARTILHAR O LINK DE UM JOGADOR
 -----------------------------------------
@@ -67,10 +75,18 @@ USO
 - A tela inicial publica a lista de jogadores, inclusive quem ainda nao
   respondeu e quem informou que nao vai jogar. Os nomes exibidos vem do banco;
   os nomes e cadastros internos nao precisam ser renomeados.
+- Os jogadores confirmados aparecem em duas colunas (Time A e Time B). A
+  distribuicao automatica tenta equilibrar a quantidade de jogadores, as
+  posicoes e os niveis; convidados tambem entram na divisao, sem posicao ou
+  nivel atribuidos.
 - O jogador abre o proprio link para confirmar ou recusar presenca e, quando
   permitido, cadastrar um convidado.
 - O administrador pode cadastrar jogadores, criar/atualizar um jogo e fechar
   ou reabrir as confirmacoes.
+- Na area administrativa, o administrador pode confirmar um jogador pendente
+  ou remover a confirmacao atual; o jogador volta para a lista de pendentes.
+  A acao respeita o limite de 18 pessoas e pode ser feita mesmo com as
+  confirmacoes do jogo fechadas.
 - No cadastro de jogadores, telefone, posicao e nivel sao obrigatorios.
   Os niveis aceitos sao 1, 2 e 3; as posicoes sao Atacante, Zagueiro, Central
   e Goleiro. Cadastros antigos podem ser completados pela edicao.

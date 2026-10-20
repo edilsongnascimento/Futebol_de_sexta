@@ -82,6 +82,7 @@
     $("adminLogoutBtn").classList.remove("hidden");
     await loadCurrentGame();
     await loadMembers();
+    await loadAttendance();
   }
 
   async function logout() {
@@ -119,12 +120,53 @@
           <span class="status ${member.ativo ? "" : "status-closed"}">${member.ativo ? "Ativo" : "Desativado"}</span>
         </div>
         <div class="member-actions">
-          <button class="btn btn-secondary" type="button" data-member-action="edit" data-member-id="${esc(member.id)}">Editar</button>
-          ${member.ativo ? `<button class="btn btn-secondary" type="button" data-member-action="link" data-member-id="${esc(member.id)}">Gerar novo link</button>` : ""}
-          <button class="btn btn-secondary" type="button" data-member-action="toggle" data-member-id="${esc(member.id)}">${member.ativo ? "Desativar e revogar link" : "Reativar e gerar novo link"}</button>
-          <button class="btn btn-danger" type="button" data-member-action="delete" data-member-id="${esc(member.id)}">Excluir permanentemente</button>
+          <button class="btn btn-secondary" title="Editar jogador" type="button" data-member-action="edit" data-member-id="${esc(member.id)}">Editar</button>
+          ${member.ativo ? `<button class="btn btn-secondary" title="Gerar novo link" type="button" data-member-action="link" data-member-id="${esc(member.id)}">Gerar link</button>` : ""}
+          <button class="btn btn-secondary" title="${member.ativo ? "Desativar e revogar link" : "Reativar e gerar novo link"}" type="button" data-member-action="toggle" data-member-id="${esc(member.id)}">${member.ativo ? "Desativar" : "Reativar"}</button>
+          <button class="btn btn-danger" title="Excluir permanentemente" type="button" data-member-action="delete" data-member-id="${esc(member.id)}">Excluir</button>
         </div>
       </article>`).join("");
+  }
+
+  function renderAttendance(rows) {
+    if(!rows.length) {
+      $("attendanceList").innerHTML='<p class="muted">Nenhum jogador ativo para este jogo.</p>';
+      return;
+    }
+    $("attendanceList").innerHTML=rows.map(player=>{
+      const confirmed=player.confirmado===true;
+      const declined=player.nao_vai===true;
+      const status=confirmed ? "Confirmado" : declined ? "Não vai" : "Pendente";
+      return `<article class="attendance-row">
+        <div class="attendance-player">
+          <span class="member-card-name">${esc(player.nome)}</span>
+          <span class="status ${confirmed ? "" : "status-closed"}">${status}</span>
+        </div>
+        <button class="btn ${confirmed ? "btn-secondary" : "btn-primary"}" type="button"
+          data-attendance-action="${confirmed ? "remove" : "confirm"}"
+          data-member-id="${esc(player.id)}">${confirmed ? "Desconfirmar" : "Confirmar"}</button>
+      </article>`;
+    }).join("");
+  }
+
+  async function loadAttendance() {
+    $("attendanceList").innerHTML='<p class="muted">Carregando jogadores...</p>';
+    try {
+      const {data,error}=await db.rpc("admin_obter_confirmacoes_jogo");
+      if(error) throw error;
+      if(!data || !Array.isArray(data.jogadores)) throw new Error("O banco retornou as confirmações em formato inválido.");
+      currentGame=data.jogo || null;
+      if(!currentGame) {
+        $("attendanceGameInfo").textContent="Nenhum jogo futuro cadastrado.";
+        $("attendanceList").innerHTML='<p class="muted">Cadastre um jogo para gerenciar as confirmações.</p>';
+        return;
+      }
+      $("attendanceGameInfo").textContent=`Jogo: ${currentGame.data_jogo} às ${String(currentGame.hora || "19:30").slice(0,5)} · ${Number(data.total_ocupadas || 0)}/18 vagas ocupadas${currentGame.fechado ? " · confirmações fechadas" : ""}.`;
+      renderAttendance(data.jogadores);
+    } catch(error) {
+      $("attendanceList").innerHTML='<p class="error-text">Não foi possível carregar as confirmações.</p>';
+      throw error;
+    }
   }
 
   async function loadMembers() {
@@ -209,6 +251,7 @@
       if(!id) showMemberLink({nome:data.nome || name},data.token);
       resetMemberForm();
       await loadMembers();
+      await loadAttendance();
       say("adminActionMessage",id ? "Dados do jogador atualizados." : "Jogador cadastrado com link individual ativo.");
     } catch(e) {
       console.error(e);
@@ -240,6 +283,7 @@
         showMemberLink(member,data.token);
       }
       await loadMembers();
+      await loadAttendance();
       say("adminActionMessage",activating ? "Jogador reativado. Envie o novo link individual." : "Jogador desativado e link revogado. O histórico foi preservado.");
     } catch(e) {
       console.error(e);
@@ -266,6 +310,7 @@
       $("newMemberResult").classList.add("hidden");
       $("newMemberResult").innerHTML="";
       await loadMembers();
+      await loadAttendance();
       say("adminActionMessage",`${member.nome} e o histórico associado foram excluídos permanentemente.`);
     } catch(error) {
       console.error("Não foi possível excluir o jogador.",error);
@@ -299,6 +344,33 @@
     if(button.dataset.memberAction==="delete") await deleteMember(id);
   }
 
+  async function handleAttendanceClick(event) {
+    const button=event.target.closest("[data-attendance-action]");
+    if(!button) return;
+    if(!currentGame?.id) return say("adminActionMessage","Não existe jogo para alterar.",true);
+    const confirmed=button.dataset.attendanceAction==="confirm";
+    button.disabled=true;
+    say("adminActionMessage",confirmed ? "Confirmando presença..." : "Desconfirmando presença...");
+    let updated=false;
+    try {
+      const {error}=await db.rpc("admin_definir_confirmacao_jogador",{
+        p_jogo_id:currentGame.id,
+        p_socio_id:button.dataset.memberId,
+        p_confirmado:confirmed
+      });
+      if(error) throw error;
+      updated=true;
+      await loadAttendance();
+      say("adminActionMessage",confirmed ? "Presença do jogador confirmada." : "Confirmação removida; jogador voltou para pendentes.");
+    } catch(error) {
+      console.error("Não foi possível atualizar a confirmação do jogador.",error);
+      say("adminActionMessage",updated
+        ? `Presença atualizada, mas não foi possível recarregar a lista: ${error.message || "falha inesperada."}`
+        : error.message || "Não foi possível atualizar a confirmação.",true);
+      button.disabled=false;
+    }
+  }
+
   async function createGame() {
     const date=$("gameInputDate").value, time=$("gameInputTime").value || "19:30";
     if(!date) return say("adminActionMessage","Escolha a data do jogo.",true);
@@ -309,6 +381,7 @@
       if(data?.erro) throw new Error(data.erro);
       let gameId=data?.id;
       await loadCurrentGame();
+      await loadAttendance();
       if(!gameId && currentGame?.data_jogo===date) gameId=currentGame.id;
       if(gameId) {
         try {
@@ -335,6 +408,7 @@
       if(error) throw error;
       if(data?.erro) throw new Error(data.erro);
       await loadCurrentGame();
+      await loadAttendance();
       try {
         const result=await notifyPush(nextClosed ? "confirmacoes_fechadas" : "confirmacoes_abertas",gameId);
         say("adminActionMessage",`${nextClosed ? "Confirmações fechadas." : "Confirmações reabertas."} ${pushSummary(result)}`);
@@ -357,9 +431,10 @@
     $("memberSearch").addEventListener("input",renderMembers);
     $("memberStatusFilter").addEventListener("change",renderMembers);
     $("memberList").addEventListener("click",handleMemberListClick);
+    $("attendanceList").addEventListener("click",handleAttendanceClick);
     $("createGameBtn").addEventListener("click",createGame);
     $("toggleGameBtn").addEventListener("click",toggleGame);
-    try { await showAdmin(); } catch(e) { say("adminMessage",e.message || "Não foi possível abrir a administração.",true); }
+    try { await showAdmin(); } catch(e) { say("adminMessage",e.message || "Não foi possível abrir a área administrativa.",true); }
   }
   init().catch(e=>{console.error(e);say("adminMessage",e.message || "Erro ao iniciar.",true);});
 })();
