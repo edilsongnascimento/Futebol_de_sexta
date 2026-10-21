@@ -36,19 +36,36 @@ begin
 
   select coalesce(jsonb_agg(
     jsonb_build_object(
-      'id', s.id,
-      'nome', s.nome,
-      'confirmado', coalesce(c.confirmou, false),
-      'nao_vai', coalesce(c.confirmou = false, false)
+      'id', x.socio_id,
+      'nome', x.nome,
+      'confirmado', x.confirmado,
+      'nao_vai', x.nao_vai,
+      'tipo', x.tipo,
+      'convidado_por', x.convidado_por
     )
-    order by s.nome
+    order by x.nome, x.tipo
   ), '[]'::jsonb)
   into v_jogadores
-  from public.socios s
-  left join public.confirmacoes c
-    on c.socio_id = s.id
-   and c.jogo_id = v_jogo.id
-  where s.ativo = true;
+  from (
+    select s.id as socio_id, s.nome,
+      coalesce(c.confirmou, false) as confirmado,
+      coalesce(c.confirmou = false, false) as nao_vai,
+      'jogador'::text as tipo,
+      null::text as convidado_por
+    from public.socios s
+    left join public.confirmacoes c
+      on c.socio_id = s.id
+     and c.jogo_id = v_jogo.id
+    where s.ativo = true
+    union all
+    select s.id as socio_id, g.nome,
+      true as confirmado, false as nao_vai,
+      'convidado'::text as tipo, s.nome as convidado_por
+    from public.convidados g
+    join public.socios s on s.id = g.socio_id
+    where g.jogo_id = v_jogo.id
+      and s.ativo = true
+  ) x;
 
   select count(*) into v_total
   from (
@@ -170,7 +187,102 @@ begin
 end;
 $$;
 
+create or replace function public.admin_remover_convidado(
+  p_jogo_id uuid,
+  p_socio_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_nome text;
+begin
+  if not coalesce(public._admin_autorizado(), false) then
+    raise exception 'Acesso administrativo negado.';
+  end if;
+  if p_jogo_id is null or p_socio_id is null then
+    raise exception 'Jogo ou jogador inválido.';
+  end if;
+  if not exists (select 1 from public.jogos where id = p_jogo_id) then
+    raise exception 'Jogo não encontrado.';
+  end if;
+
+  delete from public.convidados
+  where jogo_id = p_jogo_id
+    and socio_id = p_socio_id
+  returning nome into v_nome;
+
+  if not found then
+    raise exception 'Convidado não encontrado para este jogo.';
+  end if;
+
+  return jsonb_build_object(
+    'jogo_id', p_jogo_id,
+    'socio_id', p_socio_id,
+    'nome', v_nome,
+    'removido', true
+  );
+end;
+$$;
+
+create or replace function public.remover_meu_convidado(p_token text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_socio_id uuid;
+  v_jogo_id uuid;
+  v_nome text;
+begin
+  if length(coalesce(p_token, '')) < 20 then
+    raise exception 'Link individual inválido.';
+  end if;
+
+  select s.id into v_socio_id
+  from public.socios s
+  where s.ativo = true
+    and s.token_hash = encode(extensions.digest(p_token, 'sha256'), 'hex');
+
+  if v_socio_id is null then
+    raise exception 'O link individual não está ativo.';
+  end if;
+
+  select j.id into v_jogo_id
+  from public.jogos j
+  where j.data_jogo >= current_date
+  order by j.data_jogo
+  limit 1;
+
+  if v_jogo_id is null then
+    raise exception 'Não há jogo futuro cadastrado.';
+  end if;
+
+  delete from public.convidados
+  where jogo_id = v_jogo_id
+    and socio_id = v_socio_id
+  returning nome into v_nome;
+
+  if not found then
+    raise exception 'Não há convidado cadastrado para este jogo.';
+  end if;
+
+  return jsonb_build_object(
+    'jogo_id', v_jogo_id,
+    'nome', v_nome,
+    'removido', true
+  );
+end;
+$$;
+
 revoke all on function public.admin_obter_confirmacoes_jogo() from public, anon;
 revoke all on function public.admin_definir_confirmacao_jogador(uuid, uuid, boolean) from public, anon;
+revoke all on function public.admin_remover_convidado(uuid, uuid) from public, anon;
+revoke all on function public.remover_meu_convidado(text) from public;
 grant execute on function public.admin_obter_confirmacoes_jogo() to authenticated;
 grant execute on function public.admin_definir_confirmacao_jogador(uuid, uuid, boolean) to authenticated;
+grant execute on function public.admin_remover_convidado(uuid, uuid) to authenticated;
+grant execute on function public.remover_meu_convidado(text) to anon, authenticated;

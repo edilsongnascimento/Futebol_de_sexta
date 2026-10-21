@@ -134,17 +134,21 @@
       return;
     }
     $("attendanceList").innerHTML=rows.map(player=>{
+      const isGuest=player.tipo==="convidado";
       const confirmed=player.confirmado===true;
       const declined=player.nao_vai===true;
       const status=confirmed ? "Confirmado" : declined ? "Não vai" : "Pendente";
       return `<article class="attendance-row">
         <div class="attendance-player">
-          <span class="member-card-name">${esc(player.nome)}</span>
-          <span class="status ${confirmed ? "" : "status-closed"}">${status}</span>
+          <div>
+            <span class="member-card-name">${esc(player.nome)}</span>
+            ${isGuest ? `<div class="attendance-detail">Convidado de ${esc(player.convidado_por)}</div>` : ""}
+          </div>
+          <span class="status ${isGuest ? "guest-tag" : confirmed ? "" : "status-closed"}">${isGuest ? "Convidado" : status}</span>
         </div>
         <button class="btn ${confirmed ? "btn-secondary" : "btn-primary"}" type="button"
-          data-attendance-action="${confirmed ? "remove" : "confirm"}"
-          data-member-id="${esc(player.id)}">${confirmed ? "Desconfirmar" : "Confirmar"}</button>
+          data-attendance-action="${isGuest ? "remove-guest" : confirmed ? "remove" : "confirm"}"
+          data-member-id="${esc(player.id)}">${isGuest ? "Remover convidado" : confirmed ? "Desconfirmar" : "Confirmar"}</button>
       </article>`;
     }).join("");
   }
@@ -348,22 +352,31 @@
     const button=event.target.closest("[data-attendance-action]");
     if(!button) return;
     if(!currentGame?.id) return say("adminActionMessage","Não existe jogo para alterar.",true);
-    const confirmed=button.dataset.attendanceAction==="confirm";
+    const action=button.dataset.attendanceAction;
+    const isGuest=action==="remove-guest";
+    const confirmed=action==="confirm";
     button.disabled=true;
-    say("adminActionMessage",confirmed ? "Confirmando presença..." : "Desconfirmando presença...");
+    say("adminActionMessage",isGuest ? "Removendo convidado..." : confirmed ? "Confirmando presença..." : "Desconfirmando presença...");
     let updated=false;
     try {
-      const {error}=await db.rpc("admin_definir_confirmacao_jogador",{
-        p_jogo_id:currentGame.id,
-        p_socio_id:button.dataset.memberId,
-        p_confirmado:confirmed
-      });
+      const {error}=isGuest
+        ? await db.rpc("admin_remover_convidado",{
+            p_jogo_id:currentGame.id,
+            p_socio_id:button.dataset.memberId
+          })
+        : await db.rpc("admin_definir_confirmacao_jogador",{
+            p_jogo_id:currentGame.id,
+            p_socio_id:button.dataset.memberId,
+            p_confirmado:confirmed
+          });
       if(error) throw error;
       updated=true;
       await loadAttendance();
-      say("adminActionMessage",confirmed ? "Presença do jogador confirmada." : "Confirmação removida; jogador voltou para pendentes.");
+      say("adminActionMessage",isGuest
+        ? "Convidado removido; a vaga foi liberada."
+        : confirmed ? "Presença do jogador confirmada." : "Confirmação removida; jogador voltou para pendentes.");
     } catch(error) {
-      console.error("Não foi possível atualizar a confirmação do jogador.",error);
+      console.error("Não foi possível atualizar a confirmação ou remover o convidado.",error);
       say("adminActionMessage",updated
         ? `Presença atualizada, mas não foi possível recarregar a lista: ${error.message || "falha inesperada."}`
         : error.message || "Não foi possível atualizar a confirmação.",true);

@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id);
   const CAPACITY = 18;
   const TOKEN_STORAGE_KEY = "futebol-de-sexta-player-token";
-  let db = null, member = null, game = null, participants = [], occupied = 0;
+  let db = null, member = null, game = null, participants = [], occupied = 0, myGuest = null;
   let memberToken = null;
 
   const token = () => memberToken;
@@ -185,7 +185,7 @@
     $("gameStatus").classList.toggle("status-closed", Boolean(game) && closed);
     $("closedNotice").classList.toggle("hidden", !closed);
     $("confirmationArea").classList.toggle("hidden", !member || !game || closed);
-    $("guestArea").classList.toggle("hidden", !member || !game || closed);
+    $("guestArea").classList.toggle("hidden", !member || !game || (closed && !myGuest));
   }
 
   async function load() {
@@ -217,6 +217,7 @@
       return;
     }
     member = data.socio; game = data.jogo || null; participants = data.confirmados || [];
+    myGuest = data.meu_convidado || null;
     $("playerLogoutBtn").classList.remove("hidden");
     $("connectionStatus").textContent = "Conectado";
     $("identityText").textContent = `Olá, ${member.nome}!`;
@@ -229,11 +230,16 @@
     $("gameSubtitle").textContent = game ? "Confirme sua participação para o próximo jogo." : "Aguarde o administrador cadastrar um jogo.";
     const mine = String(data.minha_confirmacao || "").toLowerCase();
     say("confirmationMessage", mine === "sim" ? "Você já confirmou sua presença." : mine === "nao" ? "Você informou que não vai." : "");
-    if (data.meu_convidado) {
-      $("guestName").value = data.meu_convidado.nome || "";
+    if (myGuest) {
+      $("guestName").value = myGuest.nome || "";
       $("guestName").disabled = true; $("guestBtn").disabled = true;
-      say("guestMessage", `Convidado cadastrado: ${data.meu_convidado.nome}.`);
+      $("guestBtn").classList.add("hidden");
+      $("guestRemoveBtn").classList.remove("hidden");
+      say("guestMessage", `Convidado cadastrado: ${myGuest.nome}.`);
     } else {
+      $("guestName").value = "";
+      $("guestBtn").classList.remove("hidden");
+      $("guestRemoveBtn").classList.add("hidden");
       $("guestName").disabled = data.pode_convidar === false;
       $("guestBtn").disabled = data.pode_convidar === false;
       say("guestMessage", data.pode_convidar === false ? "Não há vaga disponível para convidado." : "");
@@ -281,6 +287,29 @@
     } catch(e) { say("guestMessage",e.message || "Não foi possível cadastrar.",true); $("guestBtn").disabled = false; }
   }
 
+  async function removeGuest() {
+    const button=$("guestRemoveBtn");
+    if(!window.confirm("Deseja cancelar o convidado cadastrado? A vaga será liberada.")) return;
+    button.disabled=true;
+    say("guestMessage","Removendo convidado...");
+    let removed=false;
+    try {
+      const {data,error}=await db.rpc("remover_meu_convidado",{p_token:token()});
+      if(error) throw error;
+      if(data?.erro) throw new Error(data.erro);
+      removed=true;
+      await load();
+      say("guestMessage","Convidado removido; a vaga foi liberada.");
+    } catch(error) {
+      console.error("Não foi possível remover o convidado.",error);
+      say("guestMessage",removed
+        ? `Convidado removido, mas não foi possível atualizar a tela: ${error.message || "falha inesperada."}`
+        : error.message || "Não foi possível remover o convidado.",true);
+    } finally {
+      button.disabled=false;
+    }
+  }
+
   async function init() {
     if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY || !window.supabase?.createClient) throw new Error("Confira config.js e sua conexão com a internet.");
     restoreToken();
@@ -290,6 +319,7 @@
     $("yesBtn").addEventListener("click",()=>confirm(true));
     $("noBtn").addEventListener("click",()=>confirm(false));
     $("guestBtn").addEventListener("click",addGuest);
+    $("guestRemoveBtn").addEventListener("click",removeGuest);
     await load();
   }
   init().catch(e => { console.error(e); $("connectionStatus").textContent = "Erro ao carregar"; say("identityHint",e.message || "Erro ao consultar o banco.",true); });

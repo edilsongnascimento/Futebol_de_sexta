@@ -1,4 +1,4 @@
-const CACHE = "futebol-de-sexta-v4";
+const CACHE = "futebol-de-sexta-v5";
 const CORE = ["./","./index.html","./socio.html","./admin.html","./style.css","./app.js","./socio.js","./admin.js","./install.js","./config.js","./manifest.json","./icon.svg","./icon-192.png","./icon-512.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting()));

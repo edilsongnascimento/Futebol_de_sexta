@@ -43,12 +43,16 @@ CONFIGURACAO DO SUPABASE
    execute MIGRACAO_LINKS_JOGADORES.sql depois da migracao do CRUD.
 7. Para habilitar a exclusao permanente de jogadores pelo painel, execute
    MIGRACAO_EXCLUIR_JOGADORES.sql depois da migracao de notificacoes push.
-8. Para permitir que o administrador confirme ou desconfirme jogadores no
-   proximo jogo, execute MIGRACAO_CONFIRMAR_JOGADORES_ADMIN.sql depois dos
-   SQLs-base e de COMPLEMENTO_SUPABASE.sql.
+8. Para permitir que o administrador confirme ou desconfirme jogadores e
+   remova convidados no proximo jogo, execute ou reexecute
+   MIGRACAO_CONFIRMAR_JOGADORES_ADMIN.sql depois dos SQLs-base e de
+   COMPLEMENTO_SUPABASE.sql.
 9. Para separar os confirmados em dois times equilibrados por posicao e nivel,
    execute MIGRACAO_TIMES_CONFIRMADOS.sql depois da migracao CRUD e do
    COMPLEMENTO_SUPABASE.sql.
+10. Para consultar jogos anteriores na tela inicial, execute
+    MIGRACAO_HISTORICO_JOGOS.sql depois dos SQLs-base, do COMPLEMENTO_SUPABASE.sql
+    e de MIGRACAO_TIMES_CONFIRMADOS.sql.
 
 CRIAR E COMPARTILHAR O LINK DE UM JOGADOR
 -----------------------------------------
@@ -80,13 +84,15 @@ USO
   posicoes e os niveis; convidados tambem entram na divisao, sem posicao ou
   nivel atribuidos.
 - O jogador abre o proprio link para confirmar ou recusar presenca e, quando
-  permitido, cadastrar um convidado.
+  permitido, cadastrar ou cancelar o proprio convidado.
 - O administrador pode cadastrar jogadores, criar/atualizar um jogo e fechar
   ou reabrir as confirmacoes.
 - Na area administrativa, o administrador pode confirmar um jogador pendente
   ou remover a confirmacao atual; o jogador volta para a lista de pendentes.
-  A acao respeita o limite de 18 pessoas e pode ser feita mesmo com as
-  confirmacoes do jogo fechadas.
+  Convidados aparecem identificados pelo jogador responsavel e podem ser
+  removidos individualmente, liberando a vaga. As acoes podem ser feitas mesmo
+  com as confirmacoes do jogo fechadas. A confirmacao de jogadores respeita o
+  limite de 18 pessoas.
 - No cadastro de jogadores, telefone, posicao e nivel sao obrigatorios.
   Os niveis aceitos sao 1, 2 e 3; as posicoes sao Atacante, Zagueiro, Central
   e Goleiro. Cadastros antigos podem ser completados pela edicao.
@@ -96,6 +102,10 @@ USO
 - A desativacao do jogador preserva o historico e revoga o link atual.
   Ao reativar, o painel gera um link individual novo.
 - A capacidade exibida no app e de 18 pessoas.
+- Na tela inicial, o seletor "Consultar outro jogo" permite abrir jogos
+  anteriores. O historico mostra confirmados, convidados e recusas registradas;
+  nao lista como pendentes jogadores que podem nao estar cadastrados naquela
+  data.
 
 PUBLICACAO
 ----------

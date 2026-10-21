@@ -37,11 +37,18 @@
 
     <section class="card hero-card">
       <div class="status-line">
-        <span class="eyebrow">PRÓXIMO JOGO</span>
+        <span id="gameHeading" class="eyebrow">PRÓXIMO JOGO</span>
         <span id="gameStatus" class="status">Carregando...</span>
       </div>
 
       <h1 id="gameDate">Consultando jogo...</h1>
+
+      <div id="gameHistoryControl" class="game-history-control hidden">
+        <label for="gameHistorySelect">Consultar outro jogo</label>
+        <select id="gameHistorySelect">
+          <option value="next">Próximo jogo</option>
+        </select>
+      </div>
 
       <p id="gameSubtitle" class="muted">
         Carregando informações.
@@ -84,7 +91,7 @@
         </div>
       </div>
 
-      <div class="people-group people-group-pending">
+      <div id="pendingGroup" class="people-group people-group-pending">
         <h3>Ainda não confirmaram</h3>
         <div id="pendingList" class="people-list">
           <p class="muted">Carregando...</p>

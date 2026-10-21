@@ -4,6 +4,19 @@
   const $ = id => document.getElementById(id);
   const CAPACITY = 18;
   let db = null;
+  let selectedGameId = "next";
+  const positionOrder = new Map([
+    ["Goleiro", 0],
+    ["Atacante", 1],
+    ["Central", 2],
+    ["Zagueiro", 3]
+  ]);
+  const positionAvatarClasses = new Map([
+    ["Goleiro", "avatar-goalkeeper"],
+    ["Atacante", "avatar-forward"],
+    ["Central", "avatar-midfielder"],
+    ["Zagueiro", "avatar-defender"]
+  ]);
 
   const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, c => ({
     "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
@@ -132,30 +145,47 @@
     return bestTeams || teams;
   }
 
-  function renderConfirmedTeams(players) {
+  function confirmedPlayerMarkup(player) {
+    const isGuest = player.tipo === "convidado";
+    const detail = isGuest
+      ? `Convidado de ${escapeHTML(player.convidado_por || "jogador")}`
+      : escapeHTML(player.posicao || "Posição pendente");
+    const avatarClass = positionAvatarClasses.get(player.posicao);
+    return `<div class="person">
+      <div class="avatar${avatarClass ? ` ${avatarClass}` : ""}">${escapeHTML((player.nome || "?").trim().slice(0,1).toUpperCase())}</div>
+      <div class="person-info">
+        <div class="person-name">${escapeHTML(player.nome)}</div>
+        <div class="person-detail">${detail}</div>
+      </div>
+      ${isGuest ? '<span class="status guest-tag">CONVIDADO</span>' : ""}
+    </div>`;
+  }
+
+  function renderConfirmedTeams(players, isHistorical = false) {
     const list = $("confirmedList");
     if (!players.length) {
       list.innerHTML = '<p class="muted">Ninguém confirmou presença ainda.</p>';
+      return;
+    }
+    if (isHistorical) {
+      const orderedPlayers = [...players].sort((a, b) =>
+        (positionOrder.get(a.posicao) ?? 4) - (positionOrder.get(b.posicao) ?? 4)
+        || String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR")
+      );
+      list.innerHTML = `<section class="team-column historical-player-column">
+        <h4>Confirmados neste jogo</h4>
+        ${orderedPlayers.map(confirmedPlayerMarkup).join("")}
+      </section>`;
       return;
     }
     const teams = splitIntoTeams(players);
     list.innerHTML = teams.map((team, index) => `
       <section class="team-column">
         <h4>Time ${index === 0 ? "A" : "B"}</h4>
-        ${team.length ? team.map(player => {
-          const isGuest = player.tipo === "convidado";
-          const detail = isGuest
-            ? `Convidado de ${escapeHTML(player.convidado_por || "jogador")}`
-            : escapeHTML(player.posicao || "Posição pendente");
-          return `<div class="person">
-            <div class="avatar">${escapeHTML((player.nome || "?").trim().slice(0,1).toUpperCase())}</div>
-            <div class="person-info">
-              <div class="person-name">${escapeHTML(player.nome)}</div>
-              <div class="person-detail">${detail}</div>
-            </div>
-            ${isGuest ? '<span class="status guest-tag">CONVIDADO</span>' : ""}
-          </div>`;
-        }).join("") : '<p class="muted">Aguardando confirmações.</p>'}
+        ${team.length ? [...team].sort((a, b) =>
+          (positionOrder.get(a.posicao) ?? 4) - (positionOrder.get(b.posicao) ?? 4)
+          || String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR")
+        ).map(confirmedPlayerMarkup).join("") : '<p class="muted">Aguardando confirmações.</p>'}
       </section>`).join("");
   }
 
@@ -164,31 +194,84 @@
     $("publicMessage").classList.add("error-text");
   }
 
-  async function loadPublic() {
-    $("publicMessage").textContent = "";
-    const {data, error} = await db.rpc("obter_painel_publico");
-    if (error) throw error;
+  function renderPanel(data, isHistorical = false) {
     if (!data) throw new Error("O banco não retornou dados.");
     const game = data.jogo;
     const confirmed = data.confirmados || [];
     const pending = data.nao_confirmados || [];
     const declined = data.nao_vai || [];
     const count = Number(data.total_ocupadas ?? confirmed.length);
+    $("gameHeading").textContent = isHistorical ? "JOGO ANTERIOR" : "PRÓXIMO JOGO";
     $("gameDate").textContent = prettyDate(game?.data_jogo, game?.hora);
     $("gameSubtitle").textContent = game
-      ? "Consulte a situação das confirmações para este jogo."
+      ? isHistorical
+        ? "Confirmados e recusas registradas neste jogo anterior."
+        : "Consulte a situação das confirmações para este jogo."
       : "O administrador ainda não publicou o próximo jogo.";
-    const closed = !game || Boolean(game.fechado) || count >= CAPACITY;
-    $("gameStatus").textContent = !game ? "Aguardando jogo" : closed ? "Confirmações fechadas" : "Confirmações abertas";
-    $("gameStatus").classList.toggle("status-open", Boolean(game) && !closed);
-    $("gameStatus").classList.toggle("status-closed", Boolean(game) && closed);
+    $("gameStatus").textContent = isHistorical
+      ? "Jogo anterior"
+      : !game ? "Aguardando jogo" : Boolean(game.fechado) || count >= CAPACITY ? "Confirmações fechadas" : "Confirmações abertas";
+    $("gameStatus").classList.toggle("status-open", Boolean(game) && !isHistorical && !game.fechado && count < CAPACITY);
+    $("gameStatus").classList.toggle("status-closed", Boolean(game) && !isHistorical && (Boolean(game.fechado) || count >= CAPACITY));
     $("countLabel").textContent = `${count} / ${CAPACITY}`;
     $("progressBar").style.width = `${Math.min(100, count / CAPACITY * 100)}%`;
+    $("pendingGroup").classList.toggle("hidden", isHistorical);
 
-    renderConfirmedTeams(confirmed);
+    renderConfirmedTeams(confirmed, isHistorical);
     renderPeople("pendingList", pending.map(p => ({...p, situacao_label:"Ainda não confirmou"})), "Todos os jogadores já responderam.");
     renderPeople("declinedList", declined.map(p => ({...p, situacao_label:"Não vai"})), "Nenhum jogador informou que não vai.");
     if (!game) showError("Ainda não existe um jogo futuro cadastrado.");
+  }
+
+  async function loadGameHistory() {
+    const {data, error} = await db.rpc("listar_jogos_anteriores");
+    if (error) throw error;
+    if (!Array.isArray(data)) throw new Error("O banco retornou um histórico de jogos inválido.");
+    const select = $("gameHistorySelect");
+    const previousSelection = selectedGameId;
+    select.innerHTML = '<option value="next">Próximo jogo</option>';
+    data.forEach(game => {
+      const option = document.createElement("option");
+      option.value = game.id;
+      option.textContent = prettyDate(game.data_jogo, game.hora);
+      select.appendChild(option);
+    });
+    $("gameHistoryControl").classList.toggle("hidden", data.length === 0);
+    if (previousSelection !== "next" && data.some(game => game.id === previousSelection)) {
+      select.value = previousSelection;
+    } else {
+      selectedGameId = "next";
+      select.value = "next";
+    }
+  }
+
+  async function loadPublic() {
+    $("publicMessage").textContent = "";
+    await loadGameHistory();
+    const {data, error} = selectedGameId === "next"
+      ? await db.rpc("obter_painel_publico")
+      : await db.rpc("obter_painel_jogo_anterior", {p_jogo_id:selectedGameId});
+    if (error) throw error;
+    renderPanel(data, selectedGameId !== "next");
+  }
+
+  async function selectGame(gameId) {
+    $("publicMessage").textContent = "";
+    $("gameHistorySelect").disabled = true;
+    try {
+      const {data, error} = gameId === "next"
+        ? await db.rpc("obter_painel_publico")
+        : await db.rpc("obter_painel_jogo_anterior", {p_jogo_id:gameId});
+      if (error) throw error;
+      selectedGameId = gameId;
+      renderPanel(data, gameId !== "next");
+    } catch (error) {
+      console.error("Não foi possível carregar o jogo selecionado.", error);
+      $("gameHistorySelect").value = selectedGameId;
+      showError(error.message || "Não foi possível carregar o jogo selecionado.");
+    } finally {
+      $("gameHistorySelect").disabled = false;
+    }
   }
 
   async function init() {
@@ -197,6 +280,7 @@
     }
     db = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
     $("refreshBtn").addEventListener("click", () => loadPublic().catch(e => showError(e.message)));
+    $("gameHistorySelect").addEventListener("change", event => selectGame(event.target.value));
     await loadPublic();
   }
 
